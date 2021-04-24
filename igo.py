@@ -9,8 +9,9 @@ SIZE = 800
 HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv'
 CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download'
 
-Highway = collections.namedtuple('Highway', '...') # Tram
-Congestion = collections.namedtuple('Congestion', '...')
+Coordinate = collection.namedtuple('Coordinate', 'longitude latitude')
+Highway = collections.namedtuple('Highway', 'way_id description coordinates') 
+Congestion = collections.namedtuple('Congestion', 'way_id date current_state planned_state' )
 
 
 def exists_graph(GRAPH_FILENAME):
