@@ -44,15 +44,17 @@ def plot_graph(graph):
 
 def download_highways(HIGHWAYS_URL):
     with urllib.request.urlopen(HIGHWAYS_URL) as response:
-        lines = [l.decode('utf-8') for l in response.readlines()]
+        lines = [line.decode('utf-8') for line in response.readlines()]
         reader = csv.reader(lines, delimiter=',', quotechar='"')
         next(reader)  # ignore first line with description
         highways = []
         for line in reader:
             way_id, description, coordinates_as_str = line
+            way_id = int(way_id)
+            coordinate_list = list(map(float, coordinates_as_str.split(',')))
             coordinates = []
-            for lat, lon in list(map(float, coordinates_as_str.split(','))):
-                coordinates.append(Coordinate(lon, lat))
+            for i in range(0, len(coordinate_list), 2):
+                coordinates.append(Coordinate(coordinate_list[i], coordinate_list[i + 1]))
             highways.append(Highway(way_id, description, coordinates))
         return highways
 
