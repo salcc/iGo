@@ -1,6 +1,7 @@
 import collections
 import pickle
 import osmnx
+import os
 
 PLACE = 'Barcelona, Catalonia'
 GRAPH_FILENAME = 'barcelona.graph'
@@ -13,7 +14,7 @@ Congestion = collections.namedtuple('Congestion', '...')
 
 
 def exists_graph(GRAPH_FILENAME):
-    pass
+    return os.path.isfile(GRAPH_FILENAME)
 
 
 def download_graph(PLACE):
