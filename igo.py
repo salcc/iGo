@@ -1,4 +1,6 @@
 import collections
+import pickle
+import osmnx
 
 PLACE = 'Barcelona, Catalonia'
 GRAPH_FILENAME = 'barcelona.graph'
