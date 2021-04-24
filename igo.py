@@ -59,7 +59,7 @@ def download_highways(HIGHWAYS_URL):
         return highways
 
 
-def plot_highways(highways, param, SIZE):
+def plot_highways(highways, output_filename, SIZE):
     pass
 
 
@@ -75,7 +75,7 @@ def download_congestions(CONGESTIONS_URL):
         return congestions
 
 
-def plot_congestions(highways, congestions, param, SIZE):
+def plot_congestions(highways, congestions, output_filename, SIZE):
     pass
 
 
@@ -83,7 +83,7 @@ def build_igraph(graph, highways, congestions):
     pass
 
 
-def get_shortest_path_with_itimes(igraph, param, param1):
+def get_shortest_path_with_itimes(igraph, origin, destination):
     pass
 
 
