@@ -15,18 +15,20 @@ Congestion = collections.namedtuple('Congestion', '...')
 def exists_graph(GRAPH_FILENAME):
     pass
 
-
 def download_graph(PLACE):
-    pass
-
+    graph = osmnx.graph_from_place(PLACE, network_type='drive', simplify=True)
+    graph = osmnx.utils_graph.get_digraph(graph, weight='length')
+    return graph
 
 def save_graph(graph, GRAPH_FILENAME):
-    pass
-
+    with open(GRAPH_FILENAME, 'wb') as file:
+        pickle.dump(graph, file)
+    return graph
 
 def load_graph(GRAPH_FILENAME):
-    pass
-
+    with open(GRAPH_FILENAME, 'rb') as file:
+        graph = pickle.load(file)
+    return graph
 
 def plot_graph(graph):
     pass
