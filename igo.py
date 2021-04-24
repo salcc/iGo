@@ -2,6 +2,8 @@ import collections
 import pickle
 import osmnx
 import os
+import urllib
+import csv
 
 PLACE = 'Barcelona, Catalonia'
 GRAPH_FILENAME = 'barcelona.graph'
@@ -17,28 +19,42 @@ Congestion = collections.namedtuple('Congestion', 'way_id date current_state pla
 def exists_graph(GRAPH_FILENAME):
     return os.path.isfile(GRAPH_FILENAME)
 
+
 def download_graph(PLACE):
     graph = osmnx.graph_from_place(PLACE, network_type='drive', simplify=True)
     graph = osmnx.utils_graph.get_digraph(graph, weight='length')
     return graph
+
 
 def save_graph(graph, GRAPH_FILENAME):
     with open(GRAPH_FILENAME, 'wb') as file:
         pickle.dump(graph, file)
     return graph
 
+
 def load_graph(GRAPH_FILENAME):
     with open(GRAPH_FILENAME, 'rb') as file:
         graph = pickle.load(file)
     return graph
+
 
 def plot_graph(graph):
     pass
 
 
 def download_highways(HIGHWAYS_URL):
-    pass
-
+    with urllib.request.urlopen(HIGHWAYS_URL) as response:
+        lines = [l.decode('utf-8') for l in response.readlines()]
+        reader = csv.reader(lines, delimiter=',', quotechar='"')
+        next(reader)  # ignore first line with description
+        highways = []
+        for line in reader:
+            way_id, description, coordinates_as_str = line
+            coordinates = []
+            for lat, lon in list(map(float, coordinates_as_str.split(','))):
+                coordinates.append(Coordinate(lon, lat))
+            highways.append(Highway(way_id, description, coordinates))
+        return highways
 
 def plot_highways(highways, param, SIZE):
     pass
