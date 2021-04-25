@@ -89,7 +89,9 @@ def build_igraph(graph, highways, congestions):
 def get_shortest_path_with_itimes(igraph, origin, destination):
     origin_node = osmnx.get_nearest_node(igraph, osmnx.geocoder.geocode(origin))
     destination_node = osmnx.get_nearest_node(igraph, osmnx.geocoder.geocode(destination))
-    return osmnx.distance.shortest_path(igraph, origin_node, destination_node, weight='length')
+    ipath = osmnx.distance.shortest_path(igraph, origin_node, destination_node, weight='length')
+    ipath = [Coordinate(igraph.nodes[node]['x'], igraph.nodes[node]['y']) for node in ipath]
+    return ipath
 
 
 def plot_path(igraph, ipath, SIZE):
