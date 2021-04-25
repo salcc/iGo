@@ -39,10 +39,6 @@ def load_graph(GRAPH_FILENAME):
     return graph
 
 
-def plot_graph(graph):
-    pass
-
-
 def download_highways(HIGHWAYS_URL):
     with urllib.request.urlopen(HIGHWAYS_URL) as response:
         lines = [line.decode('utf-8') for line in response.readlines()]
@@ -87,11 +83,13 @@ def plot_congestions(highways, congestions, output_filename, SIZE):
 
 
 def build_igraph(graph, highways, congestions):
-    pass
+    return graph  # stub
 
 
 def get_shortest_path_with_itimes(igraph, origin, destination):
-    pass
+    origin_node = osmnx.get_nearest_node(igraph, osmnx.geocoder.geocode(origin))
+    destination_node = osmnx.get_nearest_node(igraph, osmnx.geocoder.geocode(destination))
+    return osmnx.distance.shortest_path(igraph, origin_node, destination_node, weight='length')
 
 
 def plot_path(igraph, ipath, SIZE):
@@ -105,7 +103,6 @@ def test():
         save_graph(graph, GRAPH_FILENAME)
     else:
         graph = load_graph(GRAPH_FILENAME)
-    plot_graph(graph)
 
     # download highways and plot them into a PNG image
     highways = download_highways(HIGHWAYS_URL)
