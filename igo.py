@@ -87,8 +87,39 @@ def plot_congestions(highways, congestions, output_filename, SIZE):
     map_image.save(output_filename)
 
 
+def icolor(ispeed, min_ispeed, max_ispeed):
+    range = min_ispeed - max_ispeed
+    if range == 0:
+        value = 0.5
+    else:
+        value = (ispeed - min_ispeed) / range
+    hue = ((1 - value) * 120)
+    return 'hsl({},100%,50%)'.format(hue)
+
+
+def plot_igraph(igraph, output_filename, SIZE):
+    min_ispeed, max_ispeed = float('inf'), 0
+    for node1, node2, edge_data in igraph.edges(data=True):
+        ispeed = edge_data['length'] / edge_data['itime']
+        if ispeed < min_ispeed:
+            min_ispeed = ispeed
+        if ispeed > max_ispeed:
+            max_ispeed = ispeed
+
+    map = staticmap.StaticMap(SIZE, SIZE)
+    for node1, node2, edge_data in igraph.edges(data=True):
+        ispeed = edge_data['length'] / edge_data['itime']
+        line = staticmap.Line([node_to_coordinates(igraph, node1), node_to_coordinates(igraph, node2)],
+                              icolor(ispeed, min_ispeed, max_ispeed), 2)
+        map.add_line(line)
+    map_image = map.render()
+    map_image.save(output_filename)
+
+
 def build_igraph(graph, highways, congestions):
-    return graph  # stub
+    for node1, node2, edge_data in graph.edges(data=True):
+        graph[node1][node2]['itime'] = graph[node1][node2]['length']  # stub
+    return graph
 
 
 def node_to_coordinates(graph, node_id):
@@ -141,8 +172,10 @@ def test():
     # plot the congestions into a PNG image
     plot_congestions(highways, congestions, 'congestions.png', SIZE)
 
-    # get the 'intelligent graph' version of a graph taking into account the congestions of the highways
+    # get the 'intelligent graph' version of the graph (taking into account the congestions of the highways)
     igraph = build_igraph(graph, highways, congestions)
+    # plot the igraph into a PNG image
+    plot_igraph(igraph, 'igraph.png', SIZE)
 
     # get 'intelligent path' between two addresses
     ipath = get_shortest_path_with_itimes(igraph, "Campus Nord", "Sagrada Família", PLACE)
