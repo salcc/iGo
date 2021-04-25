@@ -58,8 +58,8 @@ def download_highways(HIGHWAYS_URL):
 
 def plot_highways(highways, output_filename, SIZE):
     map = staticmap.StaticMap(SIZE, SIZE)
-    for highway in highways:
-        highway_line = staticmap.Line((highway.coordinates), 'black', 2)
+    for way_id, highway in highways.items():
+        highway_line = staticmap.Line(highway.coordinates, 'black', 2)
         map.add_line(highway_line)
     map_image = map.render()
     map_image.save(output_filename)
