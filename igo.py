@@ -110,11 +110,19 @@ def build_igraph(graph, highways, congestions):
     return graph  # stub
 
 
-def get_shortest_path_with_itimes(igraph, origin, destination):
-    origin_node = osmnx.get_nearest_node(igraph, osmnx.geocoder.geocode(origin))
-    destination_node = osmnx.get_nearest_node(igraph, osmnx.geocoder.geocode(destination))
+def node_to_coordinates(graph, node_id):
+    return Coordinate(graph.nodes[node_id]['x'], graph.nodes[node_id]['y'])
+
+
+def get_shortest_path_with_itimes(igraph, origin, destination, PLACE):
+    origin_coordinates = osmnx.geocoder.geocode(origin + ', ' + PLACE)
+    destination_coordinates = osmnx.geocoder.geocode(destination + ', ' + PLACE)
+
+    origin_node = osmnx.get_nearest_node(igraph, origin_coordinates)
+    destination_node = osmnx.get_nearest_node(igraph, destination_coordinates)
+
     ipath = osmnx.distance.shortest_path(igraph, origin_node, destination_node, weight='length')
-    ipath = [Coordinate(igraph.nodes[id]['x'], igraph.nodes[id]['y']) for id in ipath]
+    ipath = [node_to_coordinates(igraph, id) for id in ipath]
     return ipath
 
 
@@ -146,7 +154,7 @@ def test():
     igraph = build_igraph(graph, highways, congestions)
 
     # get 'intelligent path' between two addresses and plot it into a PNG image
-    ipath = get_shortest_path_with_itimes(igraph, "Campus Nord", "Sagrada Família")
+    ipath = get_shortest_path_with_itimes(igraph, "Campus Nord", "Sagrada Família", PLACE)
     plot_path(ipath, 'path.png', SIZE)
 
 
