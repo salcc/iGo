@@ -5,6 +5,7 @@ import os
 import urllib
 import csv
 import staticmap
+import networkx
 
 PLACE = 'Barcelona, Catalonia'
 GRAPH_FILENAME = 'barcelona.graph'
@@ -88,6 +89,9 @@ def plot_congestions(highways, congestions, output_filename, SIZE):
 
 
 def build_igraph(graph, highways, congestions):
+    for edge in list(graph.edges()):
+        print(get_edge_attributes(graph, 'weight')
+        print()
     return graph  # stub
 
 
