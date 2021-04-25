@@ -93,7 +93,7 @@ def icolor(ispeed, min_ispeed, max_ispeed):
         value = 0.5
     else:
         value = (ispeed - min_ispeed) / range
-    hue = ((1 - value) * 120)
+    hue = (1 - value) * 120
     return 'hsl({},100%,50%)'.format(hue)
 
 
@@ -109,9 +109,9 @@ def plot_igraph(igraph, output_filename, SIZE):
     map = staticmap.StaticMap(SIZE, SIZE)
     for node1, node2, edge_data in igraph.edges(data=True):
         ispeed = edge_data['length'] / edge_data['itime']
-        line = staticmap.Line([node_to_coordinates(igraph, node1), node_to_coordinates(igraph, node2)],
+        iline = staticmap.Line([node_to_coordinates(igraph, node1), node_to_coordinates(igraph, node2)],
                               icolor(ispeed, min_ispeed, max_ispeed), 2)
-        map.add_line(line)
+        map.add_line(iline)
     map_image = map.render()
     map_image.save(output_filename)
 
