@@ -4,7 +4,7 @@ import osmnx
 import os
 import urllib
 import csv
-import staticmap 
+import staticmap
 
 PLACE = 'Barcelona, Catalonia'
 GRAPH_FILENAME = 'barcelona.graph'
@@ -79,7 +79,6 @@ def download_congestions(CONGESTIONS_URL):
 
 def plot_congestions(highways, congestions, output_filename, SIZE):
     map = staticmap.StaticMap(SIZE, SIZE)
-    
 
 
 def build_igraph(graph, highways, congestions):
@@ -90,12 +89,16 @@ def get_shortest_path_with_itimes(igraph, origin, destination):
     origin_node = osmnx.get_nearest_node(igraph, osmnx.geocoder.geocode(origin))
     destination_node = osmnx.get_nearest_node(igraph, osmnx.geocoder.geocode(destination))
     ipath = osmnx.distance.shortest_path(igraph, origin_node, destination_node, weight='length')
-    ipath = [Coordinate(igraph.nodes[node]['x'], igraph.nodes[node]['y']) for node in ipath]
+    ipath = [Coordinate(igraph.nodes[id]['x'], igraph.nodes[id]['y']) for id in ipath]
     return ipath
 
 
-def plot_path(igraph, ipath, SIZE):
-    pass
+def plot_path(ipath, output_filename, SIZE):
+    map = staticmap.StaticMap(SIZE, SIZE)
+    highway_line = staticmap.Line(ipath, 'black', 2)
+    map.add_line(highway_line)
+    map_image = map.render()
+    map_image.save(output_filename)
 
 
 def test():
@@ -110,17 +113,16 @@ def test():
     highways = download_highways(HIGHWAYS_URL)
     plot_highways(highways, 'highways.png', SIZE)
 
-
     # download congestions and plot them into a PNG image
     congestions = download_congestions(CONGESTIONS_URL)
     plot_congestions(highways, congestions, 'congestions.png', SIZE)
-
 
     # get the 'intelligent graph' version of a graph taking into account the congestions of the highways
     igraph = build_igraph(graph, highways, congestions)
 
     # get 'intelligent path' between two addresses and plot it into a PNG image
     ipath = get_shortest_path_with_itimes(igraph, "Campus Nord", "Sagrada Família")
-    plot_path(igraph, ipath, SIZE)
+    plot_path(igraph, ipath, 'path.png', SIZE)
+
 
 test()
