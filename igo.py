@@ -4,6 +4,7 @@ import osmnx
 import os
 import urllib
 import csv
+import staticmap 
 
 PLACE = 'Barcelona, Catalonia'
 GRAPH_FILENAME = 'barcelona.graph'
@@ -56,7 +57,12 @@ def download_highways(HIGHWAYS_URL):
 
 
 def plot_highways(highways, output_filename, SIZE):
-    pass
+    map = staticmap.StaticMap(SIZE, SIZE)
+    for highway in highways:
+        highway_line = staticmap.Line((highway.coordinates), 'black', 2)
+        map.add_line(highway_line)
+    map_image = map.render()
+    map_image.save(output_filename)
 
 
 def download_congestions(CONGESTIONS_URL):
@@ -111,3 +117,5 @@ def test():
     # get 'intelligent path' between two addresses and plot it into a PNG image
     ipath = get_shortest_path_with_itimes(igraph, "Campus Nord", "Sagrada Família")
     plot_path(igraph, ipath, SIZE)
+
+test()
