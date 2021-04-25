@@ -44,7 +44,7 @@ def download_highways(HIGHWAYS_URL):
         lines = [line.decode('utf-8') for line in response.readlines()]
         reader = csv.reader(lines, delimiter=',', quotechar='"')
         next(reader)  # ignore first line with description
-        highways = []
+        highways = {}
         for line in reader:
             way_id, description, coordinates_as_str = line
             way_id = int(way_id)
@@ -52,7 +52,7 @@ def download_highways(HIGHWAYS_URL):
             coordinates = []
             for i in range(0, len(coordinate_list), 2):
                 coordinates.append(Coordinate(coordinate_list[i], coordinate_list[i + 1]))
-            highways.append(Highway(way_id, description, coordinates))
+            highways[way_id] = Highway(description, coordinates)
         return highways
 
 
@@ -70,10 +70,10 @@ def download_congestions(CONGESTIONS_URL):
         lines = [line.decode('utf-8') for line in response.readlines()]
         reader = csv.reader(lines, delimiter='#', quotechar='"')
         next(reader)  # ignore first line with description
-        congestions = []
+        congestions = {}
         for line in reader:
             way_id, datetime, current_state, planned_state = map(int, line)
-            congestions.append(Congestion(way_id, datetime, current_state, planned_state))
+            congestions[way_id] = Congestion(datetime, current_state, planned_state)
         return congestions
 
 
