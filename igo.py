@@ -5,6 +5,7 @@ import os
 import urllib
 import csv
 import staticmap
+import networkx
 
 PLACE = 'Barcelona, Catalonia'
 GRAPH_FILENAME = 'barcelona.graph'
@@ -116,10 +117,35 @@ def plot_igraph(igraph, output_filename, SIZE):
     map_image.save(output_filename)
 
 
-def build_igraph(graph, highways, congestions):
+def set_default_itime(graph):
     for node1, node2, edge_data in graph.edges(data=True):
-        graph[node1][node2]['itime'] = graph[node1][node2]['length']  # stub
-    return graph
+        if 'maxspeed' in edge_data:
+            if type(edge_data['maxspeed']) is list:
+                maxspeeds = [float(maxspeed) for maxspeed in edge_data['maxspeed']]
+                edge_data['maxspeed'] = sum(maxspeeds) / len(maxspeeds)
+            else:
+                edge_data['maxspeed'] = float(edge_data['maxspeed'])
+        else: 
+            edge_data['maxspeed'] = 30  # https://www.barcelona.cat/mobilitat/ca/barcelona-ciutat-30
+
+        graph[node1][node2]['itime'] = edge_data['length'] * edge_data['maxspeed']
+
+def set_congestioned_itime(graph, highways, congestions):
+    for way_id, highway in highways.items():
+        congestion_state = congestions[way_id].current_state
+        if congestion_state != 0:
+            for i in range(len(highway.coordinates) - 1):
+                node1 = osmnx.get_nearest_node(graph, (highway.coordinates[i].latitude, highway.coordinates[i].longitude))
+                node2 = osmnx.get_nearest_node(graph, (highway.coordinates[i + 1].latitude, highway.coordinates[i + 1].longitude))
+                path = osmnx.distance.shortest_path(graph, node1, node2, weight='length')
+                for j in range(len(path) - 1):
+                    graph[path[j]][path[j + 1]]['itime'] += congestion_state #TODO
+
+def build_igraph(graph, highways, congestions):
+    igraph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
+    set_default_itime(igraph)
+    set_congestioned_itime(igraph, highways, congestions)
+    return igraph
 
 
 def node_to_coordinates(graph, node_id):
