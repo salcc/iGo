@@ -122,7 +122,7 @@ def test():
 
     # get 'intelligent path' between two addresses and plot it into a PNG image
     ipath = get_shortest_path_with_itimes(igraph, "Campus Nord", "Sagrada Família")
-    plot_path(igraph, ipath, 'path.png', SIZE)
+    plot_path(ipath, 'path.png', SIZE)
 
 
 test()
