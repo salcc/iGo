@@ -109,8 +109,12 @@ def get_shortest_path_with_itimes(igraph, origin, destination, PLACE):
 
 def plot_path(ipath, output_filename, SIZE):
     map = staticmap.StaticMap(SIZE, SIZE)
+    icon_origin = staticmap.IconMarker(ipath[0], './icons/origin.png', 10, 32)
+    icon_destination = staticmap.IconMarker(ipath[-1], './icons/destination.png', 10, 32)
     path_line = staticmap.Line(ipath, 'black', 2)
     map.add_line(path_line)
+    map.add_marker(icon_origin)
+    map.add_marker(icon_destination)
     map_image = map.render()
     map_image.save(output_filename)
 
