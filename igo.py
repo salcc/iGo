@@ -13,8 +13,8 @@ HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-
 CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download'
 
 Coordinate = collections.namedtuple('Coordinate', 'longitude latitude')
-Highway = collections.namedtuple('Highway', 'way_id description coordinates')
-Congestion = collections.namedtuple('Congestion', 'way_id datetime current_state planned_state')
+Highway = collections.namedtuple('Highway', 'description coordinates')
+Congestion = collections.namedtuple('Congestion', 'datetime current_state planned_state')
 
 
 def exists_graph(GRAPH_FILENAME):
@@ -82,7 +82,8 @@ def download_congestions(CONGESTIONS_URL):
 
 
 def plot_congestions(highways, congestions, output_filename, SIZE):
-    pass
+    map = staticmap.StaticMap(SIZE, SIZE)
+    
 
 
 def build_igraph(graph, highways, congestions):
@@ -110,9 +111,11 @@ def test():
     highways = download_highways(HIGHWAYS_URL)
     plot_highways(highways, 'highways.png', SIZE)
 
+
     # download congestions and plot them into a PNG image
     congestions = download_congestions(CONGESTIONS_URL)
     plot_congestions(highways, congestions, 'congestions.png', SIZE)
+
 
     # get the 'intelligent graph' version of a graph taking into account the congestions of the highways
     igraph = build_igraph(graph, highways, congestions)
