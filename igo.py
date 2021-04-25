@@ -79,28 +79,10 @@ def download_congestions(CONGESTIONS_URL):
 def plot_congestions(highways, congestions, output_filename, SIZE):
     map = staticmap.StaticMap(SIZE, SIZE)
     for way_id, highway in highways.items():
-        congestion = congestions[way_id].current_state
-        if congestion == 0:
-            highway_line = staticmap.Line(highway.coordinates, '#a9a9a9', 2)
-            map.add_line(highway_line)
-        if congestion == 1:
-            highway_line = staticmap.Line(highway.coordinates, '#2e8b57', 2)
-            map.add_line(highway_line)
-        if congestion == 2:
-            highway_line = staticmap.Line(highway.coordinates, '#7cfc00', 2)
-            map.add_line(highway_line)
-        if congestion == 3:
-            highway_line = staticmap.Line(highway.coordinates, '#ffa500', 2)
-            map.add_line(highway_line)
-        if congestion == 4:
-            highway_line = staticmap.Line(highway.coordinates, '#ff4500', 2)
-            map.add_line(highway_line)
-        if congestion == 5:
-            highway_line = staticmap.Line(highway.coordinates, '#bb0202', 2)
-            map.add_line(highway_line)
-        if congestion == 6:
-            highway_line = staticmap.Line(highway.coordinates, '#510101', 2)
-            map.add_line(highway_line)
+        congestion_state = congestions[way_id].current_state
+        congestion_colors = ['#a9a9a9', '#2e8b57', '#7cfc00', '#ffa500', '#ff4500', '#bb0202', '#510101']
+        congestion_line = staticmap.Line(highway.coordinates, congestion_colors[congestion_state], 2)
+        map.add_line(congestion_line)
     map_image = map.render()
     map_image.save(output_filename)
 
@@ -127,8 +109,8 @@ def get_shortest_path_with_itimes(igraph, origin, destination, PLACE):
 
 def plot_path(ipath, output_filename, SIZE):
     map = staticmap.StaticMap(SIZE, SIZE)
-    highway_line = staticmap.Line(ipath, 'black', 2)
-    map.add_line(highway_line)
+    path_line = staticmap.Line(ipath, 'black', 2)
+    map.add_line(path_line)
     map_image = map.render()
     map_image.save(output_filename)
 
