@@ -127,9 +127,9 @@ def test():
         graph = download_graph(PLACE)
         save_data(graph, GRAPH_FILENAME)
 
-    # download highways and plot them into a PNG image
+    # load the highways, or download them if they do not exist
     if file_exists(HIGHWAYS_FILENAME):
-        highways = load_data(HIGHWAYS_URL)
+        highways = load_data(HIGHWAYS_FILENAME)
     else:
         highways = download_highways(HIGHWAYS_URL)
         save_data(highways, HIGHWAYS_FILENAME)
