@@ -69,7 +69,6 @@ def download_congestions(CONGESTIONS_URL):
     with urllib.request.urlopen(CONGESTIONS_URL) as response:
         lines = [line.decode('utf-8') for line in response.readlines()]
         reader = csv.reader(lines, delimiter='#', quotechar='"')
-        next(reader)  # ignore first line with description
         congestions = {}
         for line in reader:
             way_id, datetime, current_state, planned_state = map(int, line)
@@ -79,6 +78,32 @@ def download_congestions(CONGESTIONS_URL):
 
 def plot_congestions(highways, congestions, output_filename, SIZE):
     map = staticmap.StaticMap(SIZE, SIZE)
+    for way_id, highway in highways.items():
+        congestion = congestions[way_id].current_state
+        if congestion == 0:
+            highway_line = staticmap.Line((highway.coordinates), (169, 169, 169), 2)
+            map.add_line(highway_line)
+        if congestion == 1:
+            highway_line = staticmap.Line((highway.coordinates), (46, 139, 87), 2)
+            map.add_line(highway_line)
+        if congestion == 2:
+            highway_line = staticmap.Line((highway.coordinates), (138, 249, 41), 2)
+            map.add_line(highway_line)
+        if congestion == 3:
+            highway_line = staticmap.Line((highway.coordinates), (255, 165, 0), 2)
+            map.add_line(highway_line)
+        if congestion == 4:
+            highway_line = staticmap.Line((highway.coordinates), (255, 69, 0), 2)
+            map.add_line(highway_line)
+        if congestion == 5:
+            highway_line = staticmap.Line((highway.coordinates), (255, 0, 0), 2)
+            map.add_line(highway_line)
+        if congestion == 6:
+            highway_line = staticmap.Line((highway.coordinates), (64, 4, 4) , 2)
+            map.add_line(highway_line)
+    map_image = map.render()
+    map_image.save(output_filename)
+
 
 
 def build_igraph(graph, highways, congestions):
