@@ -89,13 +89,13 @@ def plot_congestions(highways, congestions, output_filename, SIZE):
 
 
 def icolor(ispeed, min_ispeed, max_ispeed):
-    range = min_ispeed - max_ispeed
+    range = max_ispeed - min_ispeed
     if range == 0:
         value = 0.5
     else:
         value = (ispeed - min_ispeed) / range
     hue = (1 - value) * 120
-    return 'hsl({},100%,50%)'.format(hue)
+    return 'hsl({},100%,50%)'.format(round(hue, 2))
 
 
 def plot_igraph(igraph, output_filename, SIZE):
