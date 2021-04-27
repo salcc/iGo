@@ -107,7 +107,7 @@ def get_highway_paths(graph, highways):
             node2 = osmnx.get_nearest_node(graph, (highway.coordinates[i + 1].latitude, highway.coordinates[i + 1].longitude))
             if i > 0:
                 highway_paths[way_id].pop()  # we do this to avoid repeated nodes in the path
-            highway_paths[way_id].append(osmnx.distance.shortest_path(graph, node1, node2, weight='length'))
+            highway_paths[way_id].extend(osmnx.distance.shortest_path(graph, node1, node2, weight='length'))
     return highway_paths
 
 
