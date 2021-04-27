@@ -148,7 +148,7 @@ def build_graph(graph):
     return default_graph
 
 
-def get_highway_nodes(graph, highways):  # BUG HERE
+def get_highway_nodes(graph, highways):  # TODO: BUG HERE
     highway_nodes = {}
     for way_id, highway in highways.items():
         for i in range(len(highway.coordinates) - 1):
