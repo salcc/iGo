@@ -9,7 +9,6 @@ import networkx
 
 PLACE = 'Barcelona, Catalonia'
 GRAPH_FILENAME = 'graph.dat'
-DEFAULT_IGRAPH_FILENAME = 'default_igraph.dat'
 SIZE = 800
 HIGHWAYS_FILENAME = 'highways.csv'
 HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv'
@@ -58,10 +57,21 @@ def download_highways(highways_url):
         return highways
 
 
-def plot_highways(highways, output_filename, size):
+def node_to_coordinates(graph, node_id):
+    return Coordinate(graph.nodes[node_id]['x'], graph.nodes[node_id]['y'])
+
+
+def path_to_coordinates(graph, path):
+    path_coordinates = []
+    for node in path:
+        path_coordinates.append(node_to_coordinates(graph, node))
+    return path_coordinates
+
+
+def plot_highways(graph, highways, output_filename, size):
     map = staticmap.StaticMap(size, size)
-    for way_id, highway in highways.items():
-        highway_line = staticmap.Line(highway.coordinates, 'black', 2)
+    for way_id, path in highways.items():
+        highway_line = staticmap.Line(path_to_coordinates(graph, path), 'black', 2)
         map.add_line(highway_line)
     map_image = map.render()
     map_image.save(output_filename)
@@ -78,12 +88,12 @@ def download_congestions(congestions_url):
         return congestions
 
 
-def plot_congestions(highways, congestions, output_filename, size):
+def plot_congestions(graph, highways, congestions, output_filename, size):
     map = staticmap.StaticMap(size, size)
-    for way_id, highway in highways.items():
+    for way_id, path in highways.items():
         congestion_state = congestions[way_id].current_state
         congestion_colors = ['#a9a9a9', '#2e8b57', '#7cfc00', '#ffa500', '#ff4500', '#bb0202', '#510101']
-        congestion_line = staticmap.Line(highway.coordinates, congestion_colors[congestion_state], 2)
+        congestion_line = staticmap.Line(path_to_coordinates(graph, path), congestion_colors[congestion_state], 2)
         map.add_line(congestion_line)
     map_image = map.render()
     map_image.save(output_filename)
@@ -132,25 +142,29 @@ def set_default_itime(graph):
         graph[node1][node2]['itime'] = edge_data['length'] * edge_data['maxspeed']
 
 
-def build_default_igraph(graph):
-    default_igraph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
-    set_default_itime(default_igraph)
-    return default_igraph
+def build_graph(graph):
+    default_graph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
+    set_default_itime(default_graph)
+    return default_graph
 
-def set_congestioned_itime(graph, highways, congestions):
+
+def get_highway_nodes(graph, highways):  # BUG HERE
+    highway_nodes = {}
     for way_id, highway in highways.items():
+        for i in range(len(highway.coordinates) - 1):
+            node1 = osmnx.get_nearest_node(graph, (highway.coordinates[i].latitude, highway.coordinates[i].longitude))
+            node2 = osmnx.get_nearest_node(graph, (highway.coordinates[i + 1].latitude, highway.coordinates[i + 1].longitude))
+            highway_nodes[way_id] = osmnx.distance.shortest_path(graph, node1, node2, weight='length')
+    return highway_nodes
+
+
+def build_igraph(graph, highway_paths, congestions):
+    igraph = graph.copy()
+    for way_id, highway_path in highway_paths.items():
         congestion_state = congestions[way_id].current_state
-        if congestion_state != 0:
-            for i in range(len(highway.coordinates) - 1):
-                node1 = osmnx.get_nearest_node(graph, (highway.coordinates[i].latitude, highway.coordinates[i].longitude))
-                node2 = osmnx.get_nearest_node(graph, (highway.coordinates[i + 1].latitude, highway.coordinates[i + 1].longitude))
-                path = osmnx.distance.shortest_path(graph, node1, node2, weight='length')
-                for j in range(len(path) - 1):
-                    graph[path[j]][path[j + 1]]['itime'] += congestion_state  # TODO
-
-
-def node_to_coordinates(graph, node_id):
-    return Coordinate(graph.nodes[node_id]['x'], graph.nodes[node_id]['y'])
+        for i in range(len(highway_path) - 1):
+            igraph[highway_path[i]][highway_path[i + 1]]['itime'] += congestion_state  # TODO
+    return igraph
 
 
 def get_shortest_path_with_itimes(igraph, origin, destination, place):
@@ -178,54 +192,48 @@ def plot_path(ipath, output_filename, size):
 
 
 def test():
-    # load the graph, or download it if it does not exist
+    # load the graph, or download and set times it if it does not exist
     if file_exists(GRAPH_FILENAME):
-        print("We found a wild graph!! :D")
         graph = load_data(GRAPH_FILENAME)
+        print("We found a wild graph!! :D")
     else:
         print("There is no graph :(")
-        print("We are going to download it... please be patient")
         graph = download_graph(PLACE)
+        print("We've downloaded it!")
+        graph = build_graph(graph)
         save_data(graph, GRAPH_FILENAME)
-    print("We have a graph!")
+        print("And we've built it! :)")
 
-    if file_exists(DEFAULT_IGRAPH_FILENAME):
-        print("There is an igraph!! :D")
-        igraph = load_data(DEFAULT_IGRAPH_FILENAME)
-    else:
-        print("There is no igraph :(")
-        print("We are going to build one... please be patient")
-        igraph = build_default_igraph(graph)
-        save_data(igraph, DEFAULT_IGRAPH_FILENAME)
-    print("We have an igraph!")
-
-    # load the highways, or download them if they do not exist
+    # load the highways, or download them and translate them to node paths if they do not exist
     if file_exists(HIGHWAYS_FILENAME):
         print("We have the highways!! :D")
         highways = load_data(HIGHWAYS_FILENAME)
     else:
-        print("The highways haven't been found :(( please wait while we download them...")
+        print("The highways haven't been found :(")
         highways = download_highways(HIGHWAYS_URL)
+        print("We've downloaded them!")
+        highways = get_highway_nodes(graph, highways)
         save_data(highways, HIGHWAYS_FILENAME)
+        print("Processing finished!")
     # plot the highways into a PNG image
-    plot_highways(highways, 'highways.png', SIZE)
+    plot_highways(graph, highways, 'highways.png', SIZE)
     print("Highways have been plotted into a precious map :)")
 
     # download congestions (we download them every time because they are updated every 5 minutes)
     congestions = download_congestions(CONGESTIONS_URL)
     # plot the congestions into a PNG image
-    plot_congestions(highways, congestions, 'congestions.png', SIZE)
+    plot_congestions(graph, highways, congestions, 'congestions.png', SIZE)
     print("Congestions downloaded and plotted into a very beautiful image :)")
 
     # get the 'intelligent graph' version of the graph (taking into account the congestions of the highways)
-    set_congestioned_itime(igraph, highways, congestions)
-    print("3 years after congestioned itimes have been put :(")
+    igraph = build_igraph(graph, highways, congestions)
+    print("The igraph have been built!!! The mean IQ of the planet has increased by 3 points ^-^")
     # plot the igraph into a PNG image
     plot_igraph(igraph, 'igraph.png', SIZE)
     print("We now have the most intelligent graph ever plotted into a marvelous PNG image UwU")
 
     # get 'intelligent path' between two addresses
-    ipath = get_shortest_path_with_itimes(igraph, "Campus Nord", "Sagrada Família", PLACE)
+    ipath = get_shortest_path_with_itimes(igraph, "Campus Nord", "Carrer Cardó, 6", PLACE)
     # plot the path into a PNG image
     plot_path(ipath, 'path.png', SIZE)
     print("path.")
