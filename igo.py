@@ -148,14 +148,17 @@ def build_graph(graph):
     return default_graph
 
 
-def get_highway_nodes(graph, highways):  # TODO: BUG HERE
-    highway_nodes = {}
+def get_highway_paths(graph, highways):
+    highway_paths = {}
     for way_id, highway in highways.items():
+        highway_paths[way_id] = []
         for i in range(len(highway.coordinates) - 1):
             node1 = osmnx.get_nearest_node(graph, (highway.coordinates[i].latitude, highway.coordinates[i].longitude))
             node2 = osmnx.get_nearest_node(graph, (highway.coordinates[i + 1].latitude, highway.coordinates[i + 1].longitude))
-            highway_nodes[way_id] = osmnx.distance.shortest_path(graph, node1, node2, weight='length')
-    return highway_nodes
+            if i > 0:
+                highway_paths[way_id].pop()  # we do this to avoid repeated nodes in the path
+            highway_paths[way_id].append(osmnx.distance.shortest_path(graph, node1, node2, weight='length'))
+    return highway_paths
 
 
 def build_igraph(graph, highway_paths, congestions):
@@ -212,7 +215,7 @@ def test():
         print("The highways haven't been found :(")
         highways = download_highways(HIGHWAYS_URL)
         print("We've downloaded them!")
-        highways = get_highway_nodes(graph, highways)
+        highways = get_highway_paths(graph, highways)
         save_data(highways, HIGHWAYS_FILENAME)
         print("Processing finished!")
     # plot the highways into a PNG image
