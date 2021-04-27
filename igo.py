@@ -9,7 +9,7 @@ import networkx
 
 PLACE = 'Barcelona, Catalonia'
 GRAPH_FILENAME = 'graph.dat'
-SIZE = 800
+SIZE = 2000
 HIGHWAYS_FILENAME = 'highways.csv'
 HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv'
 CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download'
@@ -17,6 +17,7 @@ CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2
 Coordinate = collections.namedtuple('Coordinate', 'longitude latitude')
 Highway = collections.namedtuple('Highway', 'description coordinates')
 Congestion = collections.namedtuple('Congestion', 'datetime current_state planned_state')
+
 
 def file_exists(filename):
     return os.path.isfile(filename)
@@ -65,7 +66,7 @@ def download_highways(highways_url):
                 coordinates.append(Coordinate(coordinate_list[i], coordinate_list[i + 1]))
             highways[way_id] = Highway(description, coordinates)
         return highways
-    
+
 
 def download_congestions(congestions_url):
     with urllib.request.urlopen(congestions_url) as response:
@@ -135,7 +136,7 @@ def get_shortest_path_with_itimes(igraph, origin, destination, place):
 def plot_highways(graph, highways, output_filename, size):
     map = staticmap.StaticMap(size, size)
     for way_id, path in highways.items():
-        highway_line = staticmap.Line(path_to_coordinates(graph, path), 'black', 2)
+        highway_line = staticmap.Line(path_to_coordinates(graph, path), 'red', 2)
         map.add_line(highway_line)
     map_image = map.render()
     map_image.save(output_filename)
