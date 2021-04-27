@@ -34,14 +34,14 @@ def load_data(filename):
         return data
 
 
-def download_graph(PLACE):
-    graph = osmnx.graph_from_place(PLACE, network_type='drive', simplify=True)
+def download_graph(place):
+    graph = osmnx.graph_from_place(place, network_type='drive', simplify=True)
     graph = osmnx.utils_graph.get_digraph(graph, weight='length')
     return graph
 
 
-def download_highways(HIGHWAYS_URL):
-    with urllib.request.urlopen(HIGHWAYS_URL) as response:
+def download_highways(highways_url):
+    with urllib.request.urlopen(highways_url) as response:
         lines = [line.decode('utf-8') for line in response.readlines()]
         reader = csv.reader(lines, delimiter=',', quotechar='"')
         next(reader)  # ignore first line with description
@@ -57,8 +57,8 @@ def download_highways(HIGHWAYS_URL):
         return highways
 
 
-def plot_highways(highways, output_filename, SIZE):
-    map = staticmap.StaticMap(SIZE, SIZE)
+def plot_highways(highways, output_filename, size):
+    map = staticmap.StaticMap(size, size)
     for way_id, highway in highways.items():
         highway_line = staticmap.Line(highway.coordinates, 'black', 2)
         map.add_line(highway_line)
@@ -66,8 +66,8 @@ def plot_highways(highways, output_filename, SIZE):
     map_image.save(output_filename)
 
 
-def download_congestions(CONGESTIONS_URL):
-    with urllib.request.urlopen(CONGESTIONS_URL) as response:
+def download_congestions(congestions_url):
+    with urllib.request.urlopen(congestions_url) as response:
         lines = [line.decode('utf-8') for line in response.readlines()]
         reader = csv.reader(lines, delimiter='#', quotechar='"')
         congestions = {}
@@ -77,8 +77,8 @@ def download_congestions(CONGESTIONS_URL):
         return congestions
 
 
-def plot_congestions(highways, congestions, output_filename, SIZE):
-    map = staticmap.StaticMap(SIZE, SIZE)
+def plot_congestions(highways, congestions, output_filename, size):
+    map = staticmap.StaticMap(size, size)
     for way_id, highway in highways.items():
         congestion_state = congestions[way_id].current_state
         congestion_colors = ['#a9a9a9', '#2e8b57', '#7cfc00', '#ffa500', '#ff4500', '#bb0202', '#510101']
@@ -98,7 +98,7 @@ def icolor(ispeed, min_ispeed, max_ispeed):
     return 'hsl({},100%,50%)'.format(round(hue, 2))
 
 
-def plot_igraph(igraph, output_filename, SIZE):
+def plot_igraph(igraph, output_filename, size):
     min_ispeed, max_ispeed = float('inf'), 0
     for node1, node2, edge_data in igraph.edges(data=True):
         ispeed = edge_data['length'] / edge_data['itime']
@@ -107,11 +107,11 @@ def plot_igraph(igraph, output_filename, SIZE):
         if ispeed > max_ispeed:
             max_ispeed = ispeed
 
-    map = staticmap.StaticMap(SIZE, SIZE)
+    map = staticmap.StaticMap(size, size)
     for node1, node2, edge_data in igraph.edges(data=True):
         ispeed = edge_data['length'] / edge_data['itime']
         iline = staticmap.Line([node_to_coordinates(igraph, node1), node_to_coordinates(igraph, node2)],
-                              icolor(ispeed, min_ispeed, max_ispeed), 2)
+                               icolor(ispeed, min_ispeed, max_ispeed), 2)
         map.add_line(iline)
     map_image = map.render()
     map_image.save(output_filename)
@@ -125,21 +125,25 @@ def set_default_itime(graph):
                 edge_data['maxspeed'] = sum(maxspeeds) / len(maxspeeds)
             else:
                 edge_data['maxspeed'] = float(edge_data['maxspeed'])
-        else: 
+        else:
             edge_data['maxspeed'] = 30  # https://www.barcelona.cat/mobilitat/ca/barcelona-ciutat-30
 
         graph[node1][node2]['itime'] = edge_data['length'] * edge_data['maxspeed']
+
 
 def set_congestioned_itime(graph, highways, congestions):
     for way_id, highway in highways.items():
         congestion_state = congestions[way_id].current_state
         if congestion_state != 0:
             for i in range(len(highway.coordinates) - 1):
-                node1 = osmnx.get_nearest_node(graph, (highway.coordinates[i].latitude, highway.coordinates[i].longitude))
-                node2 = osmnx.get_nearest_node(graph, (highway.coordinates[i + 1].latitude, highway.coordinates[i + 1].longitude))
+                node1 = osmnx.get_nearest_node(graph,
+                                               (highway.coordinates[i].latitude, highway.coordinates[i].longitude))
+                node2 = osmnx.get_nearest_node(graph, (
+                highway.coordinates[i + 1].latitude, highway.coordinates[i + 1].longitude))
                 path = osmnx.distance.shortest_path(graph, node1, node2, weight='length')
                 for j in range(len(path) - 1):
-                    graph[path[j]][path[j + 1]]['itime'] += congestion_state #TODO
+                    graph[path[j]][path[j + 1]]['itime'] += congestion_state  # TODO
+
 
 def build_igraph(graph, highways, congestions):
     igraph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
@@ -152,9 +156,9 @@ def node_to_coordinates(graph, node_id):
     return Coordinate(graph.nodes[node_id]['x'], graph.nodes[node_id]['y'])
 
 
-def get_shortest_path_with_itimes(igraph, origin, destination, PLACE):
-    origin_coordinates = osmnx.geocoder.geocode(origin + ', ' + PLACE)
-    destination_coordinates = osmnx.geocoder.geocode(destination + ', ' + PLACE)
+def get_shortest_path_with_itimes(igraph, origin, destination, place):
+    origin_coordinates = osmnx.geocoder.geocode(origin + ', ' + place)
+    destination_coordinates = osmnx.geocoder.geocode(destination + ', ' + place)
 
     origin_node = osmnx.get_nearest_node(igraph, origin_coordinates)
     destination_node = osmnx.get_nearest_node(igraph, destination_coordinates)
@@ -164,8 +168,8 @@ def get_shortest_path_with_itimes(igraph, origin, destination, PLACE):
     return ipath
 
 
-def plot_path(ipath, output_filename, SIZE):
-    map = staticmap.StaticMap(SIZE, SIZE)
+def plot_path(ipath, output_filename, size):
+    map = staticmap.StaticMap(size, size)
     icon_origin = staticmap.IconMarker(ipath[0], './icons/origin.png', 10, 32)
     icon_destination = staticmap.IconMarker(ipath[-1], './icons/destination.png', 10, 32)
     path_line = staticmap.Line(ipath, 'black', 2)
