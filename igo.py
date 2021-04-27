@@ -8,7 +8,8 @@ import staticmap
 import networkx
 
 PLACE = 'Barcelona, Catalonia'
-GRAPH_FILENAME = 'barcelona.graph'
+GRAPH_FILENAME = 'graph.dat'
+DEFAULT_IGRAPH_FILENAME = 'default_igraph.dat'
 SIZE = 800
 HIGHWAYS_FILENAME = 'highways.csv'
 HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv'
@@ -131,6 +132,11 @@ def set_default_itime(graph):
         graph[node1][node2]['itime'] = edge_data['length'] * edge_data['maxspeed']
 
 
+def build_default_igraph(graph):
+    default_igraph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
+    set_default_itime(default_igraph)
+    return default_igraph
+
 def set_congestioned_itime(graph, highways, congestions):
     for way_id, highway in highways.items():
         congestion_state = congestions[way_id].current_state
@@ -143,13 +149,6 @@ def set_congestioned_itime(graph, highways, congestions):
                 path = osmnx.distance.shortest_path(graph, node1, node2, weight='length')
                 for j in range(len(path) - 1):
                     graph[path[j]][path[j + 1]]['itime'] += congestion_state  # TODO
-
-
-def build_igraph(graph, highways, congestions):
-    igraph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
-    set_default_itime(igraph)
-    set_congestioned_itime(igraph, highways, congestions)
-    return igraph
 
 
 def node_to_coordinates(graph, node_id):
@@ -183,34 +182,55 @@ def plot_path(ipath, output_filename, size):
 def test():
     # load the graph, or download it if it does not exist
     if file_exists(GRAPH_FILENAME):
+        print("We found a wild graph!! :D")
         graph = load_data(GRAPH_FILENAME)
     else:
+        print("There is no graph :(")
+        print("We are going to download it... please be patient")
         graph = download_graph(PLACE)
         save_data(graph, GRAPH_FILENAME)
+    print("We have a graph!")
+
+    if file_exists(DEFAULT_IGRAPH_FILENAME):
+        print("There is an igraph!! :D")
+        igraph = load_data(DEFAULT_IGRAPH_FILENAME)
+    else:
+        print("There is no igraph :(")
+        print("We are going to build one... please be patient")
+        igraph = build_default_igraph(graph)
+        save_data(igraph, DEFAULT_IGRAPH_FILENAME)
+    print("We have an igraph!")
 
     # load the highways, or download them if they do not exist
     if file_exists(HIGHWAYS_FILENAME):
+        print("We have the highways!! :D")
         highways = load_data(HIGHWAYS_FILENAME)
     else:
+        print("The highways haven't been found :(( please wait while we download them...")
         highways = download_highways(HIGHWAYS_URL)
         save_data(highways, HIGHWAYS_FILENAME)
     # plot the highways into a PNG image
     plot_highways(highways, 'highways.png', SIZE)
+    print("Highways have been plotted into a precious map :)")
 
     # download congestions (we download them every time because they are updated every 5 minutes)
     congestions = download_congestions(CONGESTIONS_URL)
     # plot the congestions into a PNG image
     plot_congestions(highways, congestions, 'congestions.png', SIZE)
+    print("Congestions downloaded and plotted into a very beautiful image :)")
 
     # get the 'intelligent graph' version of the graph (taking into account the congestions of the highways)
-    igraph = build_igraph(graph, highways, congestions)
+    set_congestioned_itime(igraph, highways, congestions)
+    print("3 years after congestioned itimes have been put :(")
     # plot the igraph into a PNG image
     plot_igraph(igraph, 'igraph.png', SIZE)
+    print("We now have the most intelligent graph ever plotted into a marvelous PNG image UwU")
 
     # get 'intelligent path' between two addresses
     ipath = get_shortest_path_with_itimes(igraph, "Campus Nord", "Sagrada Família", PLACE)
     # plot the path into a PNG image
     plot_path(ipath, 'path.png', SIZE)
+    print("path.")
 
 
 test()
