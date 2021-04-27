@@ -136,10 +136,8 @@ def set_congestioned_itime(graph, highways, congestions):
         congestion_state = congestions[way_id].current_state
         if congestion_state != 0:
             for i in range(len(highway.coordinates) - 1):
-                node1 = osmnx.get_nearest_node(graph,
-                                               (highway.coordinates[i].latitude, highway.coordinates[i].longitude))
-                node2 = osmnx.get_nearest_node(graph, (
-                highway.coordinates[i + 1].latitude, highway.coordinates[i + 1].longitude))
+                node1 = osmnx.get_nearest_node(graph, (highway.coordinates[i].latitude, highway.coordinates[i].longitude))
+                node2 = osmnx.get_nearest_node(graph, (highway.coordinates[i + 1].latitude, highway.coordinates[i + 1].longitude))
                 path = osmnx.distance.shortest_path(graph, node1, node2, weight='length')
                 for j in range(len(path) - 1):
                     graph[path[j]][path[j + 1]]['itime'] += congestion_state  # TODO
