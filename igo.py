@@ -18,7 +18,6 @@ Coordinate = collections.namedtuple('Coordinate', 'longitude latitude')
 Highway = collections.namedtuple('Highway', 'description coordinates')
 Congestion = collections.namedtuple('Congestion', 'datetime current_state planned_state')
 
-
 def file_exists(filename):
     return os.path.isfile(filename)
 
@@ -32,6 +31,17 @@ def load_data(filename):
     with open(filename, 'rb') as file:
         data = pickle.load(file)
         return data
+
+
+def node_to_coordinates(graph, node_id):
+    return Coordinate(graph.nodes[node_id]['x'], graph.nodes[node_id]['y'])
+
+
+def path_to_coordinates(graph, path):
+    path_coordinates = []
+    for node in path:
+        path_coordinates.append(node_to_coordinates(graph, node))
+    return path_coordinates
 
 
 def download_graph(place):
@@ -55,27 +65,7 @@ def download_highways(highways_url):
                 coordinates.append(Coordinate(coordinate_list[i], coordinate_list[i + 1]))
             highways[way_id] = Highway(description, coordinates)
         return highways
-
-
-def node_to_coordinates(graph, node_id):
-    return Coordinate(graph.nodes[node_id]['x'], graph.nodes[node_id]['y'])
-
-
-def path_to_coordinates(graph, path):
-    path_coordinates = []
-    for node in path:
-        path_coordinates.append(node_to_coordinates(graph, node))
-    return path_coordinates
-
-
-def plot_highways(graph, highways, output_filename, size):
-    map = staticmap.StaticMap(size, size)
-    for way_id, path in highways.items():
-        highway_line = staticmap.Line(path_to_coordinates(graph, path), 'black', 2)
-        map.add_line(highway_line)
-    map_image = map.render()
-    map_image.save(output_filename)
-
+    
 
 def download_congestions(congestions_url):
     with urllib.request.urlopen(congestions_url) as response:
@@ -86,46 +76,6 @@ def download_congestions(congestions_url):
             way_id, datetime, current_state, planned_state = map(int, line)
             congestions[way_id] = Congestion(datetime, current_state, planned_state)
         return congestions
-
-
-def plot_congestions(graph, highways, congestions, output_filename, size):
-    map = staticmap.StaticMap(size, size)
-    for way_id, path in highways.items():
-        congestion_state = congestions[way_id].current_state
-        congestion_colors = ['#a9a9a9', '#2e8b57', '#7cfc00', '#ffa500', '#ff4500', '#bb0202', '#510101']
-        congestion_line = staticmap.Line(path_to_coordinates(graph, path), congestion_colors[congestion_state], 2)
-        map.add_line(congestion_line)
-    map_image = map.render()
-    map_image.save(output_filename)
-
-
-def icolor(ispeed, min_ispeed, max_ispeed):
-    range = max_ispeed - min_ispeed
-    if range == 0:
-        value = 0.5
-    else:
-        value = (ispeed - min_ispeed) / range
-    hue = (1 - value) * 120
-    return 'hsl({},100%,50%)'.format(round(hue, 2))
-
-
-def plot_igraph(igraph, output_filename, size):
-    min_ispeed, max_ispeed = float('inf'), 0
-    for node1, node2, edge_data in igraph.edges(data=True):
-        ispeed = edge_data['length'] / edge_data['itime']
-        if ispeed < min_ispeed:
-            min_ispeed = ispeed
-        if ispeed > max_ispeed:
-            max_ispeed = ispeed
-
-    map = staticmap.StaticMap(size, size)
-    for node1, node2, edge_data in igraph.edges(data=True):
-        ispeed = edge_data['length'] / edge_data['itime']
-        iline = staticmap.Line([node_to_coordinates(igraph, node1), node_to_coordinates(igraph, node2)],
-                               icolor(ispeed, min_ispeed, max_ispeed), 2)
-        map.add_line(iline)
-    map_image = map.render()
-    map_image.save(output_filename)
 
 
 def set_default_itime(graph):
@@ -180,6 +130,55 @@ def get_shortest_path_with_itimes(igraph, origin, destination, place):
     ipath = osmnx.distance.shortest_path(igraph, origin_node, destination_node, weight='length')
     ipath = [node_to_coordinates(igraph, id) for id in ipath]
     return ipath
+
+
+def plot_highways(graph, highways, output_filename, size):
+    map = staticmap.StaticMap(size, size)
+    for way_id, path in highways.items():
+        highway_line = staticmap.Line(path_to_coordinates(graph, path), 'black', 2)
+        map.add_line(highway_line)
+    map_image = map.render()
+    map_image.save(output_filename)
+
+
+def plot_congestions(graph, highways, congestions, output_filename, size):
+    map = staticmap.StaticMap(size, size)
+    for way_id, path in highways.items():
+        congestion_state = congestions[way_id].current_state
+        congestion_colors = ['#a9a9a9', '#2e8b57', '#7cfc00', '#ffa500', '#ff4500', '#bb0202', '#510101']
+        congestion_line = staticmap.Line(path_to_coordinates(graph, path), congestion_colors[congestion_state], 2)
+        map.add_line(congestion_line)
+    map_image = map.render()
+    map_image.save(output_filename)
+
+
+def icolor(ispeed, min_ispeed, max_ispeed):
+    range = max_ispeed - min_ispeed
+    if range == 0:
+        value = 0.5
+    else:
+        value = (ispeed - min_ispeed) / range
+    hue = (1 - value) * 120
+    return 'hsl({},100%,50%)'.format(round(hue, 2))
+
+
+def plot_igraph(igraph, output_filename, size):
+    min_ispeed, max_ispeed = float('inf'), 0
+    for node1, node2, edge_data in igraph.edges(data=True):
+        ispeed = edge_data['length'] / edge_data['itime']
+        if ispeed < min_ispeed:
+            min_ispeed = ispeed
+        if ispeed > max_ispeed:
+            max_ispeed = ispeed
+
+    map = staticmap.StaticMap(size, size)
+    for node1, node2, edge_data in igraph.edges(data=True):
+        ispeed = edge_data['length'] / edge_data['itime']
+        iline = staticmap.Line([node_to_coordinates(igraph, node1), node_to_coordinates(igraph, node2)],
+                               icolor(ispeed, min_ispeed, max_ispeed), 2)
+        map.add_line(iline)
+    map_image = map.render()
+    map_image.save(output_filename)
 
 
 def plot_path(ipath, output_filename, size):
