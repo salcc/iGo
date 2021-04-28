@@ -121,7 +121,7 @@ def build_igraph(graph, highway_paths, congestions):
     return igraph
 
 
-def get_shortest_path_with_itimes(igraph, origin, destination, place):
+def get_ipath(igraph, origin, destination, place):
     origin_coordinates = osmnx.geocoder.geocode(origin + ', ' + place)
     destination_coordinates = osmnx.geocoder.geocode(destination + ', ' + place)
 
@@ -236,7 +236,7 @@ def test():
     print("We now have the most intelligent graph ever plotted into a marvelous PNG image UwU")
 
     # get 'intelligent path' between two addresses
-    ipath = get_shortest_path_with_itimes(igraph, "Campus Nord", "Carrer Cardó, 6", PLACE)
+    ipath = get_ipath(igraph, "Campus Nord", "Carrer Cardó, 6", PLACE)
     # plot the path into a PNG image
     plot_path(ipath, 'path.png', SIZE)
     print("path.")
