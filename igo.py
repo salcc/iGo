@@ -133,24 +133,22 @@ def get_ipath(igraph, origin, destination, place):
     return ipath
 
 
-def plot_highways(graph, highways, output_filename, size):
+def get_highways_plot(graph, highways, size):
     map = staticmap.StaticMap(size, size)
     for way_id, path in highways.items():
         highway_line = staticmap.Line(path_to_coordinates(graph, path), 'red', 2)
         map.add_line(highway_line)
-    map_image = map.render()
-    map_image.save(output_filename)
+    return map
 
 
-def plot_congestions(graph, highways, congestions, output_filename, size):
+def get_congestions_plot(graph, highways, congestions, size):
     map = staticmap.StaticMap(size, size)
     for way_id, path in highways.items():
         congestion_state = congestions[way_id].current_state
         congestion_colors = ['#a9a9a9', '#2e8b57', '#7cfc00', '#ffa500', '#ff4500', '#bb0202', '#510101']
         congestion_line = staticmap.Line(path_to_coordinates(graph, path), congestion_colors[congestion_state], 2)
         map.add_line(congestion_line)
-    map_image = map.render()
-    map_image.save(output_filename)
+    return map
 
 
 def icolor(ispeed, min_ispeed, max_ispeed):
@@ -163,7 +161,7 @@ def icolor(ispeed, min_ispeed, max_ispeed):
     return 'hsl({},100%,50%)'.format(round(hue, 2))
 
 
-def plot_igraph(igraph, output_filename, size):
+def get_igraph_plot(igraph, size):
     min_ispeed, max_ispeed = float('inf'), 0
     for node1, node2, edge_data in igraph.edges(data=True):
         ispeed = edge_data['length'] / edge_data['itime']
@@ -178,11 +176,10 @@ def plot_igraph(igraph, output_filename, size):
         iline = staticmap.Line([node_to_coordinates(igraph, node1), node_to_coordinates(igraph, node2)],
                                icolor(ispeed, min_ispeed, max_ispeed), 2)
         map.add_line(iline)
-    map_image = map.render()
-    map_image.save(output_filename)
+    return map
 
 
-def plot_path(ipath, output_filename, size):
+def get_path_plot(ipath, size):
     map = staticmap.StaticMap(size, size)
     icon_origin = staticmap.IconMarker(ipath[0], './icons/origin.png', 10, 32)
     icon_destination = staticmap.IconMarker(ipath[-1], './icons/destination.png', 10, 32)
@@ -190,6 +187,10 @@ def plot_path(ipath, output_filename, size):
     map.add_line(path_line)
     map.add_marker(icon_origin)
     map.add_marker(icon_destination)
+    return map
+    
+
+def save_image(map, output_filename):
     map_image = map.render()
     map_image.save(output_filename)
 
@@ -219,27 +220,27 @@ def test():
         save_data(highways, HIGHWAYS_FILENAME)
         print("Processing finished!")
     # plot the highways into a PNG image
-    plot_highways(graph, highways, 'highways.png', SIZE)
+    save_image(get_highways_plot(graph, highways, SIZE), 'highways.png')
     print("Highways have been plotted into a precious map :)")
 
     # download congestions (we download them every time because they are updated every 5 minutes)
     congestions = download_congestions(CONGESTIONS_URL)
     # plot the congestions into a PNG image
-    plot_congestions(graph, highways, congestions, 'congestions.png', SIZE)
+    save_image(get_congestions_plot(graph, highways, congestions, SIZE), 'congestions.png')
     print("Congestions downloaded and plotted into a very beautiful image :)")
 
     # get the 'intelligent graph' version of the graph (taking into account the congestions of the highways)
     igraph = build_igraph(graph, highways, congestions)
     print("The igraph have been built!!! The mean IQ of the planet has increased by 3 points ^-^")
     # plot the igraph into a PNG image
-    plot_igraph(igraph, 'igraph.png', SIZE)
+    save_image(get_igraph_plot(igraph, SIZE), 'igraph.png' )
     print("We now have the most intelligent graph ever plotted into a marvelous PNG image UwU")
 
     # get 'intelligent path' between two addresses
     ipath = get_ipath(igraph, "Campus Nord", "Carrer Cardó, 6", PLACE)
     # plot the path into a PNG image
-    plot_path(ipath, 'path.png', SIZE)
+    save_image(get_path_plot(ipath, SIZE), 'path.png')
     print("path.")
 
 
-test()
+
