@@ -7,7 +7,7 @@ import csv
 import staticmap
 import networkx
 
-PLACE = 'Barcelona, Catalonia'
+PLACE = 'Barcelona, Barcelonés, Barcelona, Catalonia'
 GRAPH_FILENAME = 'graph.dat'
 HIGHWAYS_FILENAME = 'highways.dat'
 SIZE = 2000
@@ -32,6 +32,14 @@ def load_data(filename):
     with open(filename, 'rb') as file:
         data = pickle.load(file)
         return data
+
+
+def name_to_coordinates(place_name, place):
+    return osmnx.geocoder.geocode(place_name + ', ' + place)
+
+
+def coordinates_to_node(graph, coordinates):
+    return osmnx.get_nearest_node(graph, coordinates)
 
 
 def node_to_coordinates(graph, node_id):
@@ -121,14 +129,8 @@ def build_igraph(graph, highway_paths, congestions):
     return igraph
 
 
-def get_ipath(igraph, origin, destination, place):
-    origin_coordinates = osmnx.geocoder.geocode(origin + ', ' + place)
-    destination_coordinates = osmnx.geocoder.geocode(destination + ', ' + place)
-
-    origin_node = osmnx.get_nearest_node(igraph, origin_coordinates)
-    destination_node = osmnx.get_nearest_node(igraph, destination_coordinates)
-
-    ipath = osmnx.distance.shortest_path(igraph, origin_node, destination_node, weight='length')
+def get_ipath(igraph, origin, destination):
+    ipath = osmnx.distance.shortest_path(igraph, origin, destination, weight='length')
     ipath = [node_to_coordinates(igraph, id) for id in ipath]
     return ipath
 
@@ -183,12 +185,12 @@ def get_path_plot(ipath, size):
     map = staticmap.StaticMap(size, size)
     icon_origin = staticmap.IconMarker(ipath[0], './icons/origin.png', 10, 32)
     icon_destination = staticmap.IconMarker(ipath[-1], './icons/destination.png', 10, 32)
-    path_line = staticmap.Line(ipath, 'black', 2)
+    path_line = staticmap.Line(ipath, 'ForestGreen', 3)
     map.add_line(path_line)
     map.add_marker(icon_origin)
     map.add_marker(icon_destination)
     return map
-    
+
 
 def save_image(map, output_filename):
     map_image = map.render()
@@ -233,14 +235,13 @@ def test():
     igraph = build_igraph(graph, highways, congestions)
     print("The igraph have been built!!! The mean IQ of the planet has increased by 3 points ^-^")
     # plot the igraph into a PNG image
-    save_image(get_igraph_plot(igraph, SIZE), 'igraph.png' )
+    save_image(get_igraph_plot(igraph, SIZE), 'igraph.png')
     print("We now have the most intelligent graph ever plotted into a marvelous PNG image UwU")
 
     # get 'intelligent path' between two addresses
-    ipath = get_ipath(igraph, "Campus Nord", "Carrer Cardó, 6", PLACE)
+    origin = coordinates_to_node(graph, name_to_coordinates("Campus Nord", PLACE))
+    destination = coordinates_to_node(graph, name_to_coordinates("Carrer Cardó, 6", PLACE))
+    ipath = get_ipath(igraph, origin, destination)
     # plot the path into a PNG image
     save_image(get_path_plot(ipath, SIZE), 'path.png')
     print("path.")
-
-
-
