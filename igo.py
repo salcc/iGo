@@ -147,7 +147,7 @@ def get_congestions_plot(graph, highways, congestions, size):
     map = staticmap.StaticMap(size, size)
     for way_id, path in highways.items():
         congestion_state = congestions[way_id].current_state
-        congestion_colors = ['#a9a9a9', '#2e8b57', '#7cfc00', '#ffa500', '#ff4500', '#bb0202', '#510101']
+        congestion_colors = ['#a9a9a9', '#228b22', '#7cfc00', '#ffa500', '#ff4500', '#bb0202', '#510101']
         congestion_line = staticmap.Line(path_to_coordinates(graph, path), congestion_colors[congestion_state], 2)
         map.add_line(congestion_line)
     return map
