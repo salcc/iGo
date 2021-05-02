@@ -22,31 +22,42 @@ def start(update, context):
 
 
 def go(update, context):
+    context.user_data['function'] = 'go'
     destination = update.message.text[4:]
     context.bot.send_message(chat_id=update.effective_chat.id, text="Oooh!! Així que vols anar a " + destination + "?")
-
-    markup = ReplyKeyboardMarkup([[KeyboardButton('Compartir ubicació', request_location=True)]], resize_keyboard=True,
+    try:
+        context.user_data['destination'] = igo.name_to_coordinates(destination, PLACE)
+        markup = ReplyKeyboardMarkup([[KeyboardButton('Compartir ubicació', request_location=True)]], resize_keyboard=True,
                                  one_time_keyboard=True)
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Envia'm on ets.", reply_markup=markup)
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Envia'm on ets.", reply_markup=markup)
 
-    context.user_data['destination'] = igo.name_to_coordinates(destination, PLACE)
+    except:
+        context.bot.send_message(chat_id=update.effective_chat.id, text="No ho he tubat buaaa 😭")
+
+
+def path(update, context):
+    graph = context.bot_data['graph']
+    highways = context.bot_data['highways']
+    congestions = igo.download_congestions(CONGESTIONS_URL)
+
+    igraph = igo.build_igraph(graph, highways, congestions)
+    origin = context.user_data['origin']
+    destination = igo.coordinates_to_node(graph, context.user_data['destination'])
+    ipath = igo.get_ipath(igraph, origin, destination)
+
+    path_plot = igo.get_path_plot(ipath, SIZE)
+    igo.save_image(path_plot, 'ipath.png')
+    context.bot.send_photo(chat_id=update.effective_chat.id, photo=open('ipath.png', 'rb'))
+    os.remove('ipath.png')
 
 
 def location(update, context):
     graph = context.bot_data['graph']
-    highways = context.bot_data['highways']
-    congestions = igo.download_congestions(CONGESTIONS_URL)
-    igraph = igo.build_igraph(graph, highways, congestions)
-
-    origin = igo.coordinates_to_node(graph, (update.message.location.latitude, update.message.location.longitude))
-    destination = igo.coordinates_to_node(graph, context.user_data['destination'])
-
-    ipath = igo.get_ipath(igraph, origin, destination)
-    path_plot = igo.get_path_plot(ipath, SIZE)
-    igo.save_image(path_plot, 'ipath.png')
-
-    context.bot.send_photo(chat_id=update.effective_chat.id, photo=open('ipath.png', 'rb'))
-    os.remove('ipath.png')
+    context.user_data['origin'] = igo.coordinates_to_node(graph, (update.message.location.latitude, update.message.location.longitude))
+    if context.user_data['function'] == 'go':
+        path(update, context)
+    elif context.user_data['funcion'] == 'where':
+        pass
 
 
 if __name__ == '__main__':

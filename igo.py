@@ -54,7 +54,7 @@ def path_to_coordinates(graph, path):
 
 
 def download_graph(place):
-    graph = osmnx.graph_from_place(place, network_type='drive', simplify=True)
+    graph = osmnx.graph_from_place(place, network_type='drive')
     graph = osmnx.utils_graph.get_digraph(graph, weight='length')
     return graph
 
