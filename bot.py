@@ -49,7 +49,7 @@ def location(update, context):
     os.remove('ipath.png')
 
 
-def main():
+if __name__ == '__main__':
     if not igo.file_exists(GRAPH_FILENAME):
         graph = igo.download_graph(PLACE)
         graph = igo.build_graph(graph)
@@ -79,6 +79,3 @@ def main():
     updater.start_polling()
 
     print("Bot running")
-
-
-main()

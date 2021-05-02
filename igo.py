@@ -245,3 +245,7 @@ def test():
     # plot the path into a PNG image
     save_image(get_path_plot(ipath, SIZE), 'path.png')
     print("path.")
+
+
+if __name__ == '__main__':
+    test()
