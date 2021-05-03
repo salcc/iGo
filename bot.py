@@ -1,8 +1,10 @@
 # importa l'API de Telegram
+
 from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, CallbackContext
 import igo
 import os
+import re
 
 PLACE = 'Barcelona, Barcelonés, Barcelona, Catalonia'
 GRAPH_FILENAME = 'graph.dat'
@@ -16,7 +18,8 @@ same_location_button = InlineKeyboardButton('Soc on era', callback_data='2')
 cancel_button = InlineKeyboardButton('Cancel·lar', callback_data='64')
 markup = InlineKeyboardMarkup([[share_location_button], [same_location_button], [cancel_button]])
 
-
+pos_coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?,?\s*-?[1-9][0-9]*(\.[0-9]+)?')
+separator_regex = re.compile(r'[,\s]\s*')
 
 # defineix una funció que saluda i que s'executarà quan el bot rebi el missatge /start
 def start(update, context):
@@ -40,15 +43,16 @@ def query_handler(update, context):
     if action == '1':
         share_location_button = KeyboardButton('Compartir ubicació', request_location=True)
         cancel_button = KeyboardButton('Cancel·lar')
-        markup = ReplyKeyboardMarkup([[share_location_button], [cancel_button]], resize_keyboard=True,
-                                 one_time_keyboard=True)
+        markup = ReplyKeyboardMarkup([[share_location_button], [cancel_button]], resize_keyboard=True, one_time_keyboard=True)
         context.bot.send_message(chat_id=update.effective_chat.id, text="Envia'm on ets.", reply_markup=markup)
     elif action == '2':
-        if context.user_data['function'] == 'go':
-            plot_path(update, context)
-        elif context.user_data['function'] == 'where':
-            plot_location(update, context)
-    
+        if 'location' in context.user_data:
+            if context.user_data['function'] == 'go':
+                plot_path(update, context)
+            elif context.user_data['function'] == 'where':
+                plot_location(update, context)
+        else:
+            context.bot.send_message(chat_id=update.effective_chat.id, text="No et tobuu buaaa 😭")
     query.answer()
 
 
@@ -82,7 +86,7 @@ def plot_location(update, context):
     os.remove(filename)
 
 
-def location(update, context):
+def location_handler(update, context):
     context.user_data['location'] = igo.coordinates_to_node(graph, (update.message.location.latitude, update.message.location.longitude))
     if context.user_data['function'] == 'go':
         plot_path(update, context)
@@ -91,12 +95,18 @@ def location(update, context):
 
 
 def pos(update, context):
-    location = update.message.text[5:]
-    try:
-        context.user_data['location'] = igo.coordinates_to_node(graph, igo.name_to_coordinates(location, PLACE))
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Ara et trobes a " + location + ".")
-    except:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="No ho he tubat buaaa 😭")
+    location = update.message.text[5:].strip()
+    if pos_coordinates_regex.fullmatch(location):
+        lon, lat = re.split(separator_regex, location)
+        coordinates = igo.Coordinate(float(lon), float(lat))
+    else:
+        try:
+            coordinates = igo.name_to_coordinates(location, PLACE)
+        except:
+            context.bot.send_message(chat_id=update.effective_chat.id, text="No ho he tubat buaaa 😭")
+            return
+    context.user_data['location'] = igo.coordinates_to_node(graph, coordinates)
+    context.bot.send_message(chat_id=update.effective_chat.id, text="La teva ubicació ha estat actualitzada.")
 
 
 if __name__ == '__main__':
@@ -121,13 +131,12 @@ if __name__ == '__main__':
     updater = Updater(token=TOKEN, use_context=True)
     dispatcher = updater.dispatcher
 
-    # indica que quan el bot rebi la comanda /start s'executi la funció start
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('go', go))
     dispatcher.add_handler(CommandHandler('where', where))
     dispatcher.add_handler(CommandHandler('pos', pos))
     dispatcher.add_handler(CallbackQueryHandler(query_handler))
-    dispatcher.add_handler(MessageHandler(Filters.location, location))
+    dispatcher.add_handler(MessageHandler(Filters.location, location_handler))
 
     # engega el bot
     updater.start_polling()
