@@ -41,11 +41,13 @@ def query_handler(update, context):
     query = update.callback_query
     action = query.data
     if action == '1':
+        query.delete_message()
         share_location_button = KeyboardButton('Compartir ubicació', request_location=True)
         cancel_button = KeyboardButton('Cancel·lar')
         markup = ReplyKeyboardMarkup([[share_location_button], [cancel_button]], resize_keyboard=True, one_time_keyboard=True)
         context.bot.send_message(chat_id=update.effective_chat.id, text="Envia'm on ets.", reply_markup=markup)
     elif action == '2':
+        query.edit_message_text('Buscant el camí')
         if 'location' in context.user_data:
             if context.user_data['function'] == 'go':
                 plot_path(update, context)
@@ -53,6 +55,8 @@ def query_handler(update, context):
                 plot_location(update, context)
         else:
             context.bot.send_message(chat_id=update.effective_chat.id, text="No et tobuu buaaa 😭")
+    elif action == '64':
+        query.edit_message_text('Operació cancel·lada')
     query.answer()
 
 
@@ -87,8 +91,9 @@ def plot_location(update, context):
 
 
 def location_handler(update, context):
-    context.user_data['location'] = igo.coordinates_to_node(graph, (update.message.location.latitude, update.message.location.longitude))
+    context.user_data['location'] = igo.coordinates_to_node(graph, (update.message.location.latitude, update.message.location.longitude)) # TODO
     if context.user_data['function'] == 'go':
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Buscant el camí")
         plot_path(update, context)
     elif context.user_data['function'] == 'where':
         plot_location(update, context)
