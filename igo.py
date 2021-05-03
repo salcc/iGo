@@ -10,7 +10,7 @@ import networkx
 PLACE = 'Barcelona, Barcelonés, Barcelona, Catalonia'
 GRAPH_FILENAME = 'graph.dat'
 HIGHWAYS_FILENAME = 'highways.dat'
-SIZE = 2000
+SIZE = 1200
 HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv'
 CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download'
 
@@ -183,12 +183,19 @@ def get_igraph_plot(igraph, size):
 
 def get_path_plot(ipath, size):
     map = staticmap.StaticMap(size, size)
-    icon_origin = staticmap.IconMarker(ipath[0], './icons/origin.png', 10, 32)
-    icon_destination = staticmap.IconMarker(ipath[-1], './icons/destination.png', 10, 32)
+    origin_icon = staticmap.IconMarker(ipath[0], './icons/origin.png', 10, 32)
+    destination_icon = staticmap.IconMarker(ipath[-1], './icons/destination.png', 10, 32)
     path_line = staticmap.Line(ipath, 'ForestGreen', 3)
     map.add_line(path_line)
-    map.add_marker(icon_origin)
-    map.add_marker(icon_destination)
+    map.add_marker(origin_icon)
+    map.add_marker(destination_icon)
+    return map
+
+
+def get_location_plot(location, size):
+    map = staticmap.StaticMap(size, size)
+    location_icon = staticmap.IconMarker(location, './icons/origin.png', 10, 32)
+    map.add_marker(location_icon)
     return map
 
 
