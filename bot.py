@@ -18,7 +18,7 @@ same_location_button = InlineKeyboardButton('Soc on era', callback_data='2')
 cancel_button = InlineKeyboardButton('Cancel·lar', callback_data='64')
 markup = InlineKeyboardMarkup([[share_location_button], [same_location_button], [cancel_button]])
 
-pos_coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?,?\s*-?[1-9][0-9]*(\.[0-9]+)?')
+pos_coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
 separator_regex = re.compile(r'[,\s]\s*')
 
 # defineix una funció que saluda i que s'executarà quan el bot rebi el missatge /start
