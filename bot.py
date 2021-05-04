@@ -26,24 +26,30 @@ def start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text="Hola! Em dic Jaume, i et portaré on em manis, d-daddy UwU")
 
 
+def location_keyboards(update, context):
+    if 'location' in context.user_data:
+        markup = InlineKeyboardMarkup([[new_location_button, same_location_button], [cancel_button]])
+        context.bot.send_message(chat_id=update.effective_chat.id, text='Vols actualitzar la teva ubicació?', reply_markup=markup)
+    else:
+        markup = InlineKeyboardMarkup([[new_location_button], [cancel_button]])
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Necessito la teva ubicació, vols compartir-me-la?", reply_markup=markup)
+
+
 def go(update, context):
     context.user_data['function'] = 'go'
     destination = update.message.text[4:]
     try:
         context.user_data['destination'] = igo.name_to_coordinates(destination, PLACE)
-
-        if 'location' in context.user_data:
-            markup1 = None
-            markup2 = InlineKeyboardMarkup([[new_location_button, same_location_button], [cancel_button]])
-        else:
-            markup1 = InlineKeyboardMarkup([[new_location_button], [cancel_button]])
-            markup2 = None
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Oooh!! Així que vols anar a " + destination + "?", reply_markup=markup1)
-        if 'location' in context.user_data:
-            context.bot.send_message(chat_id=update.effective_chat.id, text='Vols actualitzar la teva ubicació?', reply_markup=markup2)
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Oooh!! Així que vols anar a " + destination)
+        location_keyboards(update, context)    
     except:
         context.bot.send_message(chat_id=update.effective_chat.id, text="Ho sento, no hi ha resultats per a " + destination +
                                                                         "(No ho he tubat buaaa 😭)")
+
+def where(update, context):
+    context.user_data['function'] = 'where'
+    context.bot.send_message(chat_id=update.effective_chat.id, text="T'ensenyaré on ets")  
+    location_keyboards(update, context)       
 
 
 def query_handler(update, context):
@@ -55,7 +61,7 @@ def query_handler(update, context):
         markup = ReplyKeyboardMarkup([[share_location_button]], resize_keyboard=True, one_time_keyboard=True)
         context.bot.send_message(chat_id=update.effective_chat.id, text="Envia'm on ets.", reply_markup=markup)
     elif action == '2':
-        query.edit_message_text('Buscant el camí')
+        query.edit_message_text('Processant...')
         if 'location' in context.user_data:
             if context.user_data['function'] == 'go':
                 plot_path(update, context)
@@ -69,23 +75,20 @@ def query_handler(update, context):
 
 
 def plot_path(update, context):
-    congestions = igo.download_congestions(CONGESTIONS_URL)
-
-    igraph = igo.build_igraph(graph, highways, congestions)
     origin = context.user_data['location']
     destination = igo.coordinates_to_node(graph, context.user_data['destination'])
-    ipath = igo.get_ipath(igraph, origin, destination)
+    if origin == destination:
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Ostres, si ja hi ets!")
+    else:
+        congestions = igo.download_congestions(CONGESTIONS_URL)
+        igraph = igo.build_igraph(graph, highways, congestions)
+        ipath = igo.get_ipath(igraph, origin, destination)
 
-    path_plot = igo.get_path_plot(ipath, SIZE)
-    filename = 'ipath-{}-{}.png'.format(origin, destination)
-    igo.save_image(path_plot, filename)
-    context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, 'rb'))
-    os.remove(filename)
-
-
-def where(update, context):
-    context.user_data['function'] = 'where'
-    # context.bot.send_message(chat_id=update.effective_chat.id, text="On ets?", reply_markup=markup)  # TODO
+        path_plot = igo.get_path_plot(ipath, SIZE)
+        filename = 'ipath-{}-{}.png'.format(origin, destination)
+        igo.save_image(path_plot, filename)
+        context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, 'rb'))
+        os.remove(filename)
 
 
 def plot_location(update, context):
@@ -101,7 +104,7 @@ def plot_location(update, context):
 def location_handler(update, context):
     context.user_data['location'] = igo.coordinates_to_node(graph, (update.message.location.latitude, update.message.location.longitude))  # TODO
     if context.user_data['function'] == 'go':
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Buscant el camí", reply_markup=ReplyKeyboardRemove())
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Processant...", reply_markup=ReplyKeyboardRemove())
         plot_path(update, context)
     elif context.user_data['function'] == 'where':
         plot_location(update, context)
