@@ -1,7 +1,7 @@
 # importa l'API de Telegram
 
-from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, CallbackContext
+from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 import igo
 import os
 import re
@@ -13,13 +13,13 @@ SIZE = 1200
 HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv'
 CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download'
 
-share_location_button = InlineKeyboardButton('M\'he mogut', callback_data='1')
-same_location_button = InlineKeyboardButton('Soc on era', callback_data='2')
-cancel_button = InlineKeyboardButton('Cancel·lar', callback_data='64')
-markup = InlineKeyboardMarkup([[share_location_button], [same_location_button], [cancel_button]])
-
 pos_coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
 separator_regex = re.compile(r'[,\s]\s*')
+
+new_location_button = InlineKeyboardButton('Sí', callback_data='1')
+same_location_button = InlineKeyboardButton('No', callback_data='2')
+cancel_button = InlineKeyboardButton('Cancel·lar', callback_data='64')
+
 
 # defineix una funció que saluda i que s'executarà quan el bot rebi el missatge /start
 def start(update, context):
@@ -29,12 +29,21 @@ def start(update, context):
 def go(update, context):
     context.user_data['function'] = 'go'
     destination = update.message.text[4:]
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Oooh!! Així que vols anar a " + destination + "?")
     try:
         context.user_data['destination'] = igo.name_to_coordinates(destination, PLACE)
-        context.bot.send_message(chat_id=update.effective_chat.id, text="On ets?", reply_markup=markup)
+
+        if 'location' in context.user_data:
+            markup1 = None
+            markup2 = InlineKeyboardMarkup([[new_location_button, same_location_button], [cancel_button]])
+        else:
+            markup1 = InlineKeyboardMarkup([[new_location_button], [cancel_button]])
+            markup2 = None
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Oooh!! Així que vols anar a " + destination + "?", reply_markup=markup1)
+        if 'location' in context.user_data:
+            context.bot.send_message(chat_id=update.effective_chat.id, text='Vols actualitzar la teva ubicació?', reply_markup=markup2)
     except:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="No ho he tubat buaaa 😭")
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Ho sento, no hi ha resultats per a " + destination +
+                                                                        "(No ho he tubat buaaa 😭)")
 
 
 def query_handler(update, context):
@@ -43,8 +52,7 @@ def query_handler(update, context):
     if action == '1':
         query.delete_message()
         share_location_button = KeyboardButton('Compartir ubicació', request_location=True)
-        cancel_button = KeyboardButton('Cancel·lar')
-        markup = ReplyKeyboardMarkup([[share_location_button], [cancel_button]], resize_keyboard=True, one_time_keyboard=True)
+        markup = ReplyKeyboardMarkup([[share_location_button]], resize_keyboard=True, one_time_keyboard=True)
         context.bot.send_message(chat_id=update.effective_chat.id, text="Envia'm on ets.", reply_markup=markup)
     elif action == '2':
         query.edit_message_text('Buscant el camí')
@@ -77,7 +85,7 @@ def plot_path(update, context):
 
 def where(update, context):
     context.user_data['function'] = 'where'
-    context.bot.send_message(chat_id=update.effective_chat.id, text="On ets?", reply_markup=markup)
+    # context.bot.send_message(chat_id=update.effective_chat.id, text="On ets?", reply_markup=markup)  # TODO
 
 
 def plot_location(update, context):
@@ -91,9 +99,9 @@ def plot_location(update, context):
 
 
 def location_handler(update, context):
-    context.user_data['location'] = igo.coordinates_to_node(graph, (update.message.location.latitude, update.message.location.longitude)) # TODO
+    context.user_data['location'] = igo.coordinates_to_node(graph, (update.message.location.latitude, update.message.location.longitude))  # TODO
     if context.user_data['function'] == 'go':
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Buscant el camí")
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Buscant el camí", reply_markup=ReplyKeyboardRemove())
         plot_path(update, context)
     elif context.user_data['function'] == 'where':
         plot_location(update, context)
