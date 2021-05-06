@@ -112,7 +112,8 @@ def plot_location(update, context):
 
 
 def location_handler(update, context):
-    context.user_data['location'] = igo.coordinates_to_node(graph, (update.message.location.latitude, update.message.location.longitude))  # TODO
+    coordinates = igo.Coordinates(update.message.location.latitude, update.message.location.longitude)
+    context.user_data['location'] = igo.coordinates_to_node(graph, coordinates)
     context.bot.send_message(chat_id=update.effective_chat.id, text="Processant...", reply_markup=ReplyKeyboardRemove())
     if context.user_data['function'] == 'go':
         plot_path(update, context)
@@ -123,8 +124,8 @@ def location_handler(update, context):
 def pos(update, context):
     location = update.message.text[5:].strip()
     if pos_coordinates_regex.fullmatch(location):
-        lon, lat = re.split(separator_regex, location)
-        coordinates = igo.Coordinate(float(lon), float(lat))
+        lng, lat = re.split(separator_regex, location)
+        coordinates = igo.Coordinates(float(lat), float(lng))
     else:
         try:
             coordinates = igo.name_to_coordinates(location, PLACE)
