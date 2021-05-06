@@ -14,8 +14,8 @@ SIZE = 1200
 HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv'
 CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download'
 
-Coordinate = collections.namedtuple('Coordinate', 'longitude latitude')
-Highway = collections.namedtuple('Highway', 'description coordinates')
+Coordinates = collections.namedtuple('Coordinates', 'latitude longitude')
+Highway = collections.namedtuple('Highway', 'description coordinates_list')
 Congestion = collections.namedtuple('Congestion', 'datetime current_state planned_state')
 
 
@@ -35,7 +35,8 @@ def load_data(filename):
 
 
 def name_to_coordinates(place_name, place):
-    return osmnx.geocoder.geocode(place_name + ', ' + place)
+    lat, lng = osmnx.geocoder.geocode(place_name + ', ' + place)
+    return Coordinates(lat, lng)
 
 
 def coordinates_to_node(graph, coordinates):
@@ -43,7 +44,7 @@ def coordinates_to_node(graph, coordinates):
 
 
 def node_to_coordinates(graph, node_id):
-    return Coordinate(graph.nodes[node_id]['x'], graph.nodes[node_id]['y'])
+    return Coordinates(graph.nodes[node_id]['x'], graph.nodes[node_id]['y'])
 
 
 def path_to_coordinates(graph, path):
@@ -66,13 +67,13 @@ def download_highways(highways_url):
         next(reader)  # ignore first line with description
         highways = {}
         for line in reader:
-            way_id, description, coordinates_as_str = line
+            way_id, description, coordinates_str = line
             way_id = int(way_id)
-            coordinate_list = list(map(float, coordinates_as_str.split(',')))
-            coordinates = []
-            for i in range(0, len(coordinate_list), 2):
-                coordinates.append(Coordinate(coordinate_list[i], coordinate_list[i + 1]))
-            highways[way_id] = Highway(description, coordinates)
+            all_coordinate_list = list(map(float, coordinates_str.split(',')))
+            coordinates_list = []
+            for i in range(0, len(all_coordinate_list), 2):
+                coordinates_list.append(Coordinates(all_coordinate_list[i + 1], all_coordinate_list[i]))
+            highways[way_id] = Highway(description, coordinates_list)
         return highways
 
 
@@ -111,9 +112,11 @@ def get_highway_paths(graph, highways):
     highway_paths = {}
     for way_id, highway in highways.items():
         highway_paths[way_id] = []
-        for i in range(len(highway.coordinates) - 1):
-            node1 = osmnx.get_nearest_node(graph, (highway.coordinates[i].latitude, highway.coordinates[i].longitude))
-            node2 = osmnx.get_nearest_node(graph, (highway.coordinates[i + 1].latitude, highway.coordinates[i + 1].longitude))
+        for i in range(len(highway.coordinates_list) - 1):
+            coordinates1 = Coordinates(highway.coordinates_list[i].latitude, highway.coordinates_list[i].longitude)
+            node1 = osmnx.get_nearest_node(graph, coordinates1)
+            coordinates2 = Coordinates(highway.coordinates_list[i + 1].latitude, highway.coordinates_list[i + 1].longitude)
+            node2 = osmnx.get_nearest_node(graph, coordinates2)
             if i > 0:
                 highway_paths[way_id].pop()  # we do this to avoid repeated nodes in the path
             highway_paths[way_id].extend(osmnx.distance.shortest_path(graph, node1, node2, weight='length'))
