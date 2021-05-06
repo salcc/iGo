@@ -5,7 +5,8 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 import igo
 import os
 import re
-from translations import message
+
+from translations import message, available_languages
 
 PLACE = 'Barcelona, Barcelonés, Barcelona, Catalonia'
 GRAPH_FILENAME = 'graph.dat'
@@ -17,23 +18,27 @@ CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2
 pos_coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
 separator_regex = re.compile(r'[,\s]\s*')
 
-lang = 'catalan'  # TODO
-
-new_location_button = InlineKeyboardButton(message('Yes', lang), callback_data='1')
-same_location_button = InlineKeyboardButton(message('No', lang), callback_data='2')
-cancel_button = InlineKeyboardButton(message('Cancel', lang), callback_data='64')
-
 
 # defineix una funció que saluda i que s'executarà quan el bot rebi el missatge /start
 def start(update, context):
+    if 'language' not in context.user_data:
+        context.user_data['language'] = update.message.from_user.language_code
+    lang = context.user_data['language']
+
     context.bot.send_message(chat_id=update.effective_chat.id, text=message('Hi! 😄', lang))
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text=message('I\'m iGo and I\'ll help you go to wherever you want as quick as a flash. ⚡', lang))
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text=message('You can use the command /help to see what I can do.', lang))
+                             text=message('You can use the command /help to see everything I can do.', lang))
 
 
 def location_keyboards(update, context):
+    lang = context.user_data['language']
+
+    new_location_button = InlineKeyboardButton(message('Yes', lang), callback_data='1')
+    same_location_button = InlineKeyboardButton(message('No', lang), callback_data='2')
+    cancel_button = InlineKeyboardButton(message('Cancel', lang), callback_data='64')
+
     if 'location' in context.user_data:
         markup = InlineKeyboardMarkup([[new_location_button, same_location_button], [cancel_button]])
         context.bot.send_message(chat_id=update.effective_chat.id, text=message('Do you want to update your location?', lang),
@@ -46,6 +51,8 @@ def location_keyboards(update, context):
 
 
 def go(update, context):
+    lang = context.user_data['language']
+
     context.user_data['function'] = 'go'
     destination = update.message.text[4:]
     try:
@@ -59,19 +66,23 @@ def go(update, context):
 
 
 def where(update, context):
+    lang = context.user_data['language']
+
     context.user_data['function'] = 'where'
     context.bot.send_message(chat_id=update.effective_chat.id, text=message('I\'ll show you where you are.', lang))
     location_keyboards(update, context)
 
 
 def query_handler(update, context):
+    lang = context.user_data['language']
+
     query = update.callback_query
     action = query.data
     if action == '1':
         query.delete_message()
         share_location_button = KeyboardButton(message('Share location', lang), request_location=True)
         markup = ReplyKeyboardMarkup([[share_location_button]], resize_keyboard=True, one_time_keyboard=True)
-        context.bot.send_message(chat_id=update.effective_chat.id, text=message('Send me where you are.', lang),
+        context.bot.send_message(chat_id=update.effective_chat.id, text=message('Tell me where you are.', lang),
                                  reply_markup=markup)
     elif action == '2':
         query.edit_message_text(message('Processing...', lang))
@@ -85,6 +96,8 @@ def query_handler(update, context):
 
 
 def plot_path(update, context):
+    lang = context.user_data['language']
+
     origin = context.user_data['location']
     destination = igo.coordinates_to_node(graph, context.user_data['destination'])
     if origin == destination:
@@ -112,9 +125,12 @@ def plot_location(update, context):
 
 
 def location_handler(update, context):
+    lang = context.user_data['language']
+
     coordinates = igo.Coordinates(update.message.location.latitude, update.message.location.longitude)
     context.user_data['location'] = igo.coordinates_to_node(graph, coordinates)
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Processant...", reply_markup=ReplyKeyboardRemove())
+    context.bot.send_message(chat_id=update.effective_chat.id, text=message('Processing...', lang),
+                             reply_markup=ReplyKeyboardRemove())
     if context.user_data['function'] == 'go':
         plot_path(update, context)
     elif context.user_data['function'] == 'where':
@@ -122,6 +138,8 @@ def location_handler(update, context):
 
 
 def pos(update, context):
+    lang = context.user_data['language']
+
     location = update.message.text[5:].strip()
     if pos_coordinates_regex.fullmatch(location):
         lng, lat = re.split(separator_regex, location)
@@ -142,7 +160,22 @@ def help(update, context):
 
 
 def author(update, context):
-    pass  # TODO
+    lang = context.user_data['language']
+
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text=message(
+                                 'The @Official_iGo_bot has been developed with ❤️ by Marçal Comajoan Cara and Laura Saéz Parés, '
+                                 'students of the Polytechnic University of Catalonia (UPC), as a part of a project for the '
+                                 'Algorithmics and Programming II subject of the Data Science and Engineering Degree.', lang))
+
+
+def setlang(update, context):
+    lang = update.message.text[9:].strip()
+    if lang in available_languages():
+        context.user_data['language'] = lang
+        context.bot.send_message(chat_id=update.effective_chat.id, text=message('Language updated.', lang))
+    else:
+        context.bot.send_message(chat_id=update.effective_chat.id, text=message('Language not recognized.', lang))
 
 
 if __name__ == '__main__':
@@ -160,7 +193,7 @@ if __name__ == '__main__':
     else:
         highways = igo.load_data(HIGHWAYS_FILENAME)
 
-    # declara una constant amb el access token que llegeix de token.txt
+    # declara una constant amb l'access token que llegeix de token.txt
     TOKEN = open('token.txt').read().strip()
 
     # crea objectes per treballar amb Telegram
@@ -173,6 +206,8 @@ if __name__ == '__main__':
     dispatcher.add_handler(CommandHandler('pos', pos))
     dispatcher.add_handler(CommandHandler('help', help))
     dispatcher.add_handler(CommandHandler('author', author))
+    dispatcher.add_handler(CommandHandler('setlang', setlang))
+
     dispatcher.add_handler(CallbackQueryHandler(query_handler))
     dispatcher.add_handler(MessageHandler(Filters.location, location_handler))
 
