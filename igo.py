@@ -50,10 +50,11 @@ def is_in_place(coordinates, place):
 def name_to_coordinates(name, place):
     if pos_coordinates_regex.fullmatch(name):
         lat, lng = re.split(separator_regex, name)
+        lat, lng = float(lat), float(lng)
     else:
         lat, lng = osmnx.geocoder.geocode(name + ', ' + place)
     coordinates = Coordinates(lat, lng)
-    if not igo.is_in_place(coordinates, PLACE):
+    if not is_in_place(coordinates, PLACE):
         raise Exception
     return coordinates
 

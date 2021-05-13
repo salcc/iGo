@@ -2,3 +2,4 @@ osmnx~=1.0.1
 staticmap~=0.5.5
 networkx~=2.5.1
 python-telegram-bot~=13.4.1
+Shapely~=1.7.1

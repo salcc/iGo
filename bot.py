@@ -18,6 +18,7 @@ def get_language(update, context):
         context.user_data['language'] = update.message.from_user.language_code
     return context.user_data['language']
 
+
 # defineix una funció que saluda i que s'executarà quan el bot rebi el missatge /start
 def start(update, context):
     lang = get_language(update, context)
@@ -46,14 +47,18 @@ def location_keyboards(update, context):
                                  text=message('I need to know your location, do you mind sharing it with me?', lang) + ' 😊',
                                  reply_markup=markup)
 
-def get_coordinates(place_name, place):
-    try:
-        coordinates = igo.name_to_coordinates(place_name, place)
-    except:
-        context.bot.send_message(chat_id=update.effective_chat.id,
-                                text=message('I\'m sorry, there are no results for ', lang) + destination + message(' a Barcelona.', lang) + ' 😥')
-        return None
-    return coordinates
+
+def get_coordinates(context, update, place_name, place):
+    lang = get_language(update, context)
+
+    if place_name:
+        try:
+            return igo.name_to_coordinates(place_name, place)
+        except Exception:
+            context.bot.send_message(chat_id=update.effective_chat.id,
+                                    text=message('I\'m sorry, there are no results for ', lang) + place_name + message(' in Barcelona.', lang) + ' 😥')
+    else:
+        context.bot.send_message(chat_id=update.effective_chat.id, text='You haven\'t told me where!' + ' ☹️')
 
 
 def go(update, context):
@@ -61,16 +66,12 @@ def go(update, context):
 
     context.user_data['function'] = 'go'
     destination = update.message.text[4:].strip()
-    if destination:            
-        destination_coordinates = get_coordinates(destination, PLACE)
-        if destination_coordinates:
-            context.user_data['destination'] = destination_coordinates
-            context.bot.send_message(chat_id=update.effective_chat.id,
-                                text='Oooh! 😃 ' +  message('So you want to go to ', lang) + destination + '.')
-        location_keyboards(update, context)
-    else:
+    destination_coordinates = get_coordinates(context, update, destination, PLACE)
+    if destination_coordinates:
+        context.user_data['destination'] = igo.coordinates_to_node(graph, destination_coordinates)
         context.bot.send_message(chat_id=update.effective_chat.id,
-                                 text=message('You haven\'t told me where you want to go!', lang) + ' ☹️')
+                                 text='Oooh! 😃 ' +  message('So you want to go to ', lang) + destination + '.')
+        location_keyboards(update, context)
 
 
 def where(update, context):
@@ -92,7 +93,6 @@ def query_handler(update, context):
         markup = ReplyKeyboardMarkup([[share_location_button]], resize_keyboard=True, one_time_keyboard=True)
         context.bot.send_message(chat_id=update.effective_chat.id, text=message('Send me your location.', lang) + ' 🧐',
                                  reply_markup=markup)
-
     elif action == '2':
         query.edit_message_text(message('Processing...', lang) + ' ⏳')
         if context.user_data['function'] == 'go':
@@ -108,7 +108,7 @@ def plot_path(update, context):
     lang = get_language(update, context)
 
     origin = context.user_data['location']
-    destination = igo.coordinates_to_node(graph, context.user_data['destination'])
+    destination = context.user_data['destination']
     if origin == destination:
         context.bot.send_message(chat_id=update.effective_chat.id, text=message('Oh, you are already here!', lang) + ' 🥳')
     else:
@@ -155,16 +155,10 @@ def pos(update, context):
     lang = get_language(update, context)
 
     location = update.message.text[5:].strip()
-    try:
-        coordinates = igo.name_to_coordinates(location, PLACE)
-        if not igo.is_in_place(coordinates, PLACE):
-            raise Exception
-    except Exception:
-        context.bot.send_message(chat_id=update.effective_chat.id,
-                                    text=message('I\'m sorry, there are no results for ', lang) + location + '. 😥')
-        return
-    context.user_data['location'] = igo.coordinates_to_node(graph, coordinates)
-    context.bot.send_message(chat_id=update.effective_chat.id, text=message('Your location has been updated.', lang) + '✅')
+    coordinates = get_coordinates(context, update, location, PLACE)
+    if coordinates:
+        context.user_data['location'] = igo.coordinates_to_node(graph, coordinates)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=message('Your location has been updated.', lang) + '✅')
 
 
 def help(update, context):
@@ -177,8 +171,7 @@ def help(update, context):
                                 message('/where - I will show you a map with your current location indicated with a green marker.', lang)
                                 + ' 🗺️\n\n' + message('/setlang [language code] - I will talk to you in the language you choose from '
                                 'Catalan [ca], Spanish [es] and English [en].', lang) + ' 🌐\n\n' + message('/author - I will tell you '
-                                'who has developed me.', lang) + '👸🏻🤴🏻'
-                                 )
+                                'who has developed me.', lang) + '👸🏻🤴🏻')
 
 
 def author(update, context):
@@ -204,7 +197,6 @@ def setlang(update, context):
 
 if __name__ == '__main__':
     build_translation_dictionaries()
-
 
     if not igo.file_exists(GRAPH_FILENAME):
         graph = igo.download_graph(PLACE)

@@ -3,6 +3,7 @@ import os
 strings = {}
 translations = {}
 
+
 def build_translation_dictionaries():
     with open('translations/en.txt') as en:
         for line_num, message in enumerate(en.read().splitlines()):
