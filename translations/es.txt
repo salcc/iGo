@@ -1,0 +1,26 @@
+¡Hola!
+Soy iGo, y te ayudaré a ir a donde quieras rápido como un rayo.
+Puedes usar la comanda /help para ver todo lo que puedo hacer.
+¿Quieres actualizar tu ubicación?
+Necesito saber tu ubicación, ¿te parece bien compartírmela?
+¡Oooh! Así que quieres ir a 
+Lo siento, no hay resultados para 
+Te enseñaré dónde estás.
+Compartir ubicación
+Mándame tu ubicación.
+Procesando...
+Operación cancelada.
+Vaya, ¡si ya estás ahí!
+Tu ubicación ha sido actualizada.
+Sí
+No
+Cancelar
+Idioma actualizado.
+Código de idioma no reconocido.
+He sido desarrollado con ❤️ por Marçal Comajoan Cara y Laura Sáez Parés, dos estudiantes de la Universitat Politècnica de Catalunya (UPC), como parte de un proyecto para la asignatura de Algoritmia y Programación II del Grado en Ciencia e Ingeniería de Datos.
+/go [destino] - Te enseñaré un mapa con el camino más rápido para ir desde tu ubicación actual (marcador verde) al destino (marcador rojo) que me indiques cuando uses la comanda. Este camino se calcula teniendo en cuenta los datos actuales del tráfico en Barcelona.
+/where - Te enseñaré un mapa con tu posición actual indicada con un marcador verde.
+/setlang [código de idioma] - Te hablaré en el idioma que elijas entre catalán [ca], castellano [es] e inglés [en].
+/author - Te diré quién me ha desarrollado.
+¡No me has dicho dónde quieres ir!
+Parece que estás fuera de Barcelona. Me temo que no puedo ayudarte aquí.

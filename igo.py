@@ -6,6 +6,7 @@ import urllib
 import csv
 import staticmap
 import networkx
+import shapely.geometry
 
 PLACE = 'Barcelona, Barcelonés, Barcelona, Catalonia'
 GRAPH_FILENAME = 'graph.dat'
@@ -32,6 +33,13 @@ def load_data(filename):
     with open(filename, 'rb') as file:
         data = pickle.load(file)
         return data
+
+
+def is_in_place(coordinates, place):
+    gdf = osmnx.geocode_to_gdf(place)
+    shape = gdf.loc[0, 'geometry']
+    point = shapely.geometry.Point(coordinates.longitude, coordinates.latitude)
+    return shape.intersects(point)
 
 
 def name_to_coordinates(place_name, place):

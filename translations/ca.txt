@@ -1,0 +1,26 @@
+Hola!
+Soc l'iGo, i t'ajudaré a anar on vulguis ràpid com un llamp.
+Pots fer servir la comanda /help per veure tot el que puc fer.
+Vols actualitzar la teva ubicació?
+Necessito saber la teva ubicació, et sembla bé compartir-me-la?
+Oooh! Així que vols anar a 
+Ho sento, no hi ha resultats per a 
+T'ensenyaré on ets.
+Compartir ubicació
+Envia'm la teva ubicació.
+Processant...
+Operació cancel·lada.
+Vaja, si ja hi ets!
+La teva ubicació ha estat actualitzada.
+Sí
+No
+Cancel·lar
+Idioma actualitzat.
+Codi d'idioma no reconegut.
+He estat desenvolupat amb ❤️ per Marçal Comajoan Cara i Laura Saéz Parés, dos estudiants de la Universitat Politècnica de Catalunya (UPC), com a part d'un projecte per a l'assignatura d'Algorísmia i Programació II del Grau en Ciència i Enginyeria de Dades.
+/go [destí] - T'ensenyaré un mapa amb el camí més ràpid per anar des de la teva ubicació actual (marcador verd) a la destinació (marcador vermell) que m'indiquis quan utilitzis la comanda. Aquest camí es calcula tenint en compte les dades actuals del trànsit a Barcelona.
+/where - T'ensenyaré un mapa amb la teva posició actual indicada amb un marcador verd.
+/setlang [codi d'idioma] - Et parlaré en l'idioma que escullis entre català [ca], castellà [es] i anglès [en].
+/author - Et diré qui m'ha desenvolupat.
+No m'has dit on vols anar!
+Sembla que estàs fora de Barcelona. Em temo que no et puc ajudar aquí.
