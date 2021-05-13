@@ -1,12 +1,9 @@
-# importa l'API de Telegram
-
+import igo
+from translations import message, available_languages, build_translation_dictionaries
+import os
 from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
-import igo
-import os
-import re
 
-from translations import message, available_languages, build_translation_dictionaries
 
 PLACE = 'Barcelona, Barcelonés, Barcelona, Catalonia'
 GRAPH_FILENAME = 'graph.dat'
@@ -14,9 +11,6 @@ HIGHWAYS_FILENAME = 'highways.dat'
 SIZE = 1200
 HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv'
 CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download'
-
-pos_coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
-separator_regex = re.compile(r'[,\s]\s*')
 
 
 def get_language(update, context):
@@ -52,6 +46,15 @@ def location_keyboards(update, context):
                                  text=message('I need to know your location, do you mind sharing it with me?', lang) + ' 😊',
                                  reply_markup=markup)
 
+def get_coordinates(place_name, place):
+    try:
+        coordinates = igo.name_to_coordinates(place_name, place)
+    except:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                text=message('I\'m sorry, there are no results for ', lang) + destination + message(' a Barcelona.', lang) + ' 😥')
+        return None
+    return coordinates
+
 
 def go(update, context):
     lang = get_language(update, context)
@@ -59,17 +62,12 @@ def go(update, context):
     context.user_data['function'] = 'go'
     destination = update.message.text[4:].strip()
     if destination:            
-        try:
-            destination_coordinates = igo.name_to_coordinates(destination, PLACE)
-            if not igo.is_in_place(destination_coordinates, PLACE):
-                raise Exception
+        destination_coordinates = get_coordinates(destination, PLACE)
+        if destination_coordinates:
             context.user_data['destination'] = destination_coordinates
             context.bot.send_message(chat_id=update.effective_chat.id,
-                                    text='Oooh! 😃 ' +  message('So you want to go to ', lang) + destination + '.')
-            location_keyboards(update, context)
-        except Exception:
-            context.bot.send_message(chat_id=update.effective_chat.id,
-                                    text=message('I\'m sorry, there are no results for ', lang) + destination + '. 😥')
+                                text='Oooh! 😃 ' +  message('So you want to go to ', lang) + destination + '.')
+        location_keyboards(update, context)
     else:
         context.bot.send_message(chat_id=update.effective_chat.id,
                                  text=message('You haven\'t told me where you want to go!', lang) + ' ☹️')
@@ -117,12 +115,14 @@ def plot_path(update, context):
         congestions = igo.download_congestions(CONGESTIONS_URL)
         igraph = igo.build_igraph(graph, highways, congestions)
         ipath = igo.get_ipath(igraph, origin, destination)
-
-        path_plot = igo.get_path_plot(ipath, SIZE)
-        filename = 'ipath-{}-{}.png'.format(origin, destination)
-        igo.save_image(path_plot, filename)
-        context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, 'rb'))
-        os.remove(filename)
+        if ipath:    
+            path_plot = igo.get_path_plot(ipath, SIZE)
+            filename = 'ipath-{}-{}.png'.format(origin, destination)
+            igo.save_image(path_plot, filename)
+            context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, 'rb'))
+            os.remove(filename)
+        else:
+            context.bot.send_message(chat_id=update.effective_chat.id, text=message('The only way to get where you want is to pass a road that is closed!', lang) + ' 😟')
 
 
 def plot_location(update, context):
@@ -155,18 +155,14 @@ def pos(update, context):
     lang = get_language(update, context)
 
     location = update.message.text[5:].strip()
-    if pos_coordinates_regex.fullmatch(location):
-        lng, lat = re.split(separator_regex, location)
-        coordinates = igo.Coordinates(float(lat), float(lng))
-    else:
-        try:
-            coordinates = igo.name_to_coordinates(location, PLACE)
-            if not igo.is_in_place(coordinates, PLACE):
-                raise Exception
-        except Exception:
-            context.bot.send_message(chat_id=update.effective_chat.id,
-                                     text=message('I\'m sorry, there are no results for ', lang) + location + '. 😥')
-            return
+    try:
+        coordinates = igo.name_to_coordinates(location, PLACE)
+        if not igo.is_in_place(coordinates, PLACE):
+            raise Exception
+    except Exception:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                    text=message('I\'m sorry, there are no results for ', lang) + location + '. 😥')
+        return
     context.user_data['location'] = igo.coordinates_to_node(graph, coordinates)
     context.bot.send_message(chat_id=update.effective_chat.id, text=message('Your location has been updated.', lang) + '✅')
 

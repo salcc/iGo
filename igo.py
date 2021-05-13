@@ -1,9 +1,11 @@
+from math import exp
 import collections
 import pickle
-import osmnx
+import re
 import os
 import urllib
 import csv
+import osmnx
 import staticmap
 import networkx
 import shapely.geometry
@@ -18,6 +20,9 @@ CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2
 Coordinates = collections.namedtuple('Coordinates', 'latitude longitude')
 Highway = collections.namedtuple('Highway', 'description coordinates_list')
 Congestion = collections.namedtuple('Congestion', 'datetime current_state planned_state')
+
+pos_coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
+separator_regex = re.compile(r'[,\s]\s*')
 
 
 def file_exists(filename):
@@ -42,9 +47,15 @@ def is_in_place(coordinates, place):
     return shape.intersects(point)
 
 
-def name_to_coordinates(place_name, place):
-    lat, lng = osmnx.geocoder.geocode(place_name + ', ' + place)
-    return Coordinates(lat, lng)
+def name_to_coordinates(name, place):
+    if pos_coordinates_regex.fullmatch(name):
+        lat, lng = re.split(separator_regex, name)
+    else:
+        lat, lng = osmnx.geocoder.geocode(name + ', ' + place)
+    coordinates = Coordinates(lat, lng)
+    if not igo.is_in_place(coordinates, PLACE):
+        raise Exception
+    return coordinates
 
 
 def coordinates_to_node(graph, coordinates):
@@ -107,7 +118,8 @@ def set_default_itime(graph):
         else:
             edge_data['maxspeed'] = 30  # https://www.barcelona.cat/mobilitat/ca/barcelona-ciutat-30
 
-        graph[node1][node2]['itime'] = edge_data['length'] * edge_data['maxspeed']
+        edge_data['maxspeed'] *= 1000 / 3600
+        graph[node1][node2]['itime'] = edge_data['length'] / edge_data['maxspeed']
 
 
 def build_graph(graph):
@@ -131,17 +143,29 @@ def get_highway_paths(graph, highways):
     return highway_paths
 
 
+def congestion_function(congestion_state):
+    return exp((congestion_state - 1) ** 2 / 7.5)
+
+
 def build_igraph(graph, highway_paths, congestions):
     igraph = graph.copy()
     for way_id, highway_path in highway_paths.items():
         congestion_state = congestions[way_id].current_state
         for i in range(len(highway_path) - 1):
-            igraph[highway_path[i]][highway_path[i + 1]]['itime'] += congestion_state  # TODO
+            if congestion_state == 6:
+                igraph[highway_path[i]][highway_path[i + 1]]['itime'] = float('inf')
+            else:
+                if congestion_state == 0:
+                    congestion_state = 1
+                igraph[highway_path[i]][highway_path[i + 1]]['itime'] *= congestion_function(congestion_state)
     return igraph
 
 
 def get_ipath(igraph, origin, destination):
     ipath = osmnx.distance.shortest_path(igraph, origin, destination, weight='length')
+    for i in range(len(ipath) - 1):
+        if igraph[ipath[i]][ipath[i + 1]]['itime'] == float('inf'):
+            return None
     ipath = [node_to_coordinates(igraph, id) for id in ipath]
     return ipath
 
@@ -165,12 +189,14 @@ def get_congestions_plot(graph, highways, congestions, size):
 
 
 def icolor(ispeed, min_ispeed, max_ispeed):
-    range = max_ispeed - min_ispeed
-    if range == 0:
+    if ispeed == 0:
+        return 'black'
+    ispeed_range = max_ispeed - min_ispeed
+    if ispeed_range == 0:
         value = 0.5
     else:
-        value = (ispeed - min_ispeed) / range
-    hue = (1 - value) * 120
+        value = (ispeed - min_ispeed) / ispeed_range
+    hue = value * 160
     return 'hsl({},100%,50%)'.format(round(hue, 2))
 
 

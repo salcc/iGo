@@ -4,7 +4,6 @@ You can use the command /help to see everything I can do.
 Do you want to update your location?
 I need to know your location, do you mind sharing it with me?
 So you want to go to 
-I'm sorry, there are no results for 
 I'll show you where you are.
 Share location
 Send me your location.
@@ -22,5 +21,8 @@ I have been developed with ❤️ by Marçal Comajoan Cara and Laura Saéz Paré
 /where - I will show you a map with your current location indicated with a green marker.
 /setlang [language code] - I will talk to you in the language you choose from Catalan [ca], Spanish [es] and English [en].
 /author - I will tell you who has developed me.
+I'm sorry, there are no results for 
+ in Barcelona.
 You haven't told me where you want to go!
 You seem to be outside Barcelona. I'm afraid I can't help you here.
+The only way to get where you want is to pass a road that is closed!

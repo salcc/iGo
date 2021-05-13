@@ -3,8 +3,7 @@ Soc l'iGo, i t'ajudaré a anar on vulguis ràpid com un llamp.
 Pots fer servir la comanda /help per veure tot el que puc fer.
 Vols actualitzar la teva ubicació?
 Necessito saber la teva ubicació, et sembla bé compartir-me-la?
-Oooh! Així que vols anar a 
-Ho sento, no hi ha resultats per a 
+Així que vols anar a 
 T'ensenyaré on ets.
 Compartir ubicació
 Envia'm la teva ubicació.
@@ -22,5 +21,8 @@ He estat desenvolupat amb ❤️ per Marçal Comajoan Cara i Laura Saéz Parés,
 /where - T'ensenyaré un mapa amb la teva posició actual indicada amb un marcador verd.
 /setlang [codi d'idioma] - Et parlaré en l'idioma que escullis entre català [ca], castellà [es] i anglès [en].
 /author - Et diré qui m'ha desenvolupat.
+Ho sento, no hi ha resultats per a 
+ a Barcelona.
 No m'has dit on vols anar!
 Sembla que estàs fora de Barcelona. Em temo que no et puc ajudar aquí.
+L'única manera d'anar on vols és passant per una carretera que està tallada!

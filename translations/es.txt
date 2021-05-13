@@ -3,8 +3,7 @@ Soy iGo, y te ayudaré a ir a donde quieras rápido como un rayo.
 Puedes usar la comanda /help para ver todo lo que puedo hacer.
 ¿Quieres actualizar tu ubicación?
 Necesito saber tu ubicación, ¿te parece bien compartírmela?
-¡Oooh! Así que quieres ir a 
-Lo siento, no hay resultados para 
+Así que quieres ir a 
 Te enseñaré dónde estás.
 Compartir ubicación
 Mándame tu ubicación.
@@ -22,5 +21,8 @@ He sido desarrollado con ❤️ por Marçal Comajoan Cara y Laura Sáez Parés, 
 /where - Te enseñaré un mapa con tu posición actual indicada con un marcador verde.
 /setlang [código de idioma] - Te hablaré en el idioma que elijas entre catalán [ca], castellano [es] e inglés [en].
 /author - Te diré quién me ha desarrollado.
+Lo siento, no hay resultados para 
+ en Barcelona.
 ¡No me has dicho dónde quieres ir!
 Parece que estás fuera de Barcelona. Me temo que no puedo ayudarte aquí.
+¡La única forma de ir a donde quieres es pasando por una carretera que está cortada!
