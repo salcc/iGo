@@ -21,7 +21,7 @@ Coordinates = collections.namedtuple('Coordinates', 'latitude longitude')
 Highway = collections.namedtuple('Highway', 'description coordinates_list')
 Congestion = collections.namedtuple('Congestion', 'datetime current_state planned_state')
 
-pos_coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
+coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
 separator_regex = re.compile(r'[,\s]\s*')
 
 
@@ -48,7 +48,7 @@ def is_in_place(coordinates, place):
 
 
 def name_to_coordinates(name, place):
-    if pos_coordinates_regex.fullmatch(name):
+    if coordinates_regex.fullmatch(name):
         lat, lng = re.split(separator_regex, name)
         lat, lng = float(lat), float(lng)
     else:
