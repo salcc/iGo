@@ -5,14 +5,6 @@ from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, 
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 
 
-PLACE = 'Barcelona, Barcelonés, Barcelona, Catalonia'
-GRAPH_FILENAME = 'graph.dat'
-HIGHWAYS_FILENAME = 'highways.dat'
-SIZE = 1200
-HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv'
-CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download'
-
-
 def get_language(update, context):
     if 'language' not in context.user_data:
         context.user_data['language'] = update.message.from_user.language_code
@@ -196,6 +188,13 @@ def setlang(update, context):
 
 
 if __name__ == '__main__':
+    PLACE = 'Barcelona, Barcelonés, Barcelona, Catalonia'
+    GRAPH_FILENAME = 'graph.dat'
+    HIGHWAYS_FILENAME = 'highways.dat'
+    SIZE = 1200
+    HIGHWAYS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv'
+    CONGESTIONS_URL = 'https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download'
+
     build_translation_dictionaries()
 
     if not igo.file_exists(GRAPH_FILENAME):
