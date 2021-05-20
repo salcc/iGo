@@ -53,7 +53,7 @@ def name_to_coordinates(name, place):
 
 
 def coordinates_to_node(graph, coordinates):
-    # return osmnx.distance.nearest_nodes(coordinates.latitude, coordinates.longitude, graph)[0]
+    # return osmnx.distance.nearest_nodes(coordinates.latitude, coordinates.longitude, graph)
     return osmnx.get_nearest_node(graph, coordinates)
 
 
@@ -167,17 +167,25 @@ def build_igraph_with_bearings(igraph):
         for predecessor in igraph.predecessors(node):
             # I3_2: vèrtex de 3, entrant des de 2 (in)
             id = 'I' + str(node) + '_' + str(predecessor)
-            igraph_with_bearings.add_node(id, x=node_data['x'], y=node_data['y'], in_node=predecessor)
+            igraph_with_bearings.add_node(id, x=node_data['x'], y=node_data['y'], metanode=node)
             in_nodes.append(id)
         for successor in igraph.successors(node):
             # O0_1, vèrtex de 0, sortint cap a 1  (out)
             id = 'O' + str(node) + '_' + str(successor)
-            igraph_with_bearings.add_node(id, x=node_data['x'], y=node_data['y'], out_node=successor)
+            igraph_with_bearings.add_node(id, x=node_data['x'], y=node_data['y'], metanode=node)
             out_nodes.append(id)
         for in_node in in_nodes:
             for out_node in out_nodes:
                 igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, in_node, out_node))
 
+        igraph_with_bearings.add_node('S_' + str(node), x=node_data['x'], y=node_data['y'], metanode=node)
+        for in_node in in_nodes:
+            igraph_with_bearings.add_edge('S_' + str(node), in_node, itime=0)
+        igraph_with_bearings.add_node('D_' + str(node), x=node_data['x'], y=node_data['y'], metanode=node)
+        for out_node in out_nodes:
+            igraph_with_bearings.add_edge(out_node, 'D_' + str(node), itime=0)
+
+    # real edges
     for node1, node2, edge_data in igraph.edges(data=True):
         igraph_with_bearings.add_edge('O' + str(node1) + '_' + str(node2), 'I' + str(node2) + '_' + str(node1),
                                       itime=edge_data['itime'], length=edge_data['length'])
@@ -190,22 +198,17 @@ def build_igraph(graph, highway_paths, congestions):
     igraph = build_igraph_with_bearings(igraph)
     return igraph
 
-def get_ipath(igraph, origin, destination):
-    origin_nodes = osmnx.distance.get_nearest_nodes(igraph, origin.latitude, origin.longitude) # :(
-    destination_nodes = osmnx.distance.get_nearest_nodes(igraph, destination.latitude, destination.longitude) # :(
-    shortest_ipath, shortest_ipath_itime = None, float('inf')
-    for origin in origin_nodes:
-        for destination in destination_nodes:
-            ipath = osmnx.distance.shortest_path(igraph, origin, destination, weight='length')
-            ipath_itime = 0
-            for i in range(len(ipath) - 1):
-                 ipath_itime += igraph[ipath[i]][ipath[i + 1]]['itime']
-            if ipath_itime < shortest_ipath_itime:
-                shortest_ipath_itime = ipath_itime
-                shortest_ipath = ipath
-    if shortest_ipath_itime == float('inf'):
+
+def get_ipath(igraph, source, destination):
+    source = 'S_' + str(igraph.nodes[coordinates_to_node(igraph, source)]['metanode'])
+    destination = 'D_' + str(igraph.nodes[coordinates_to_node(igraph, destination)]['metanode'])
+    ipath = osmnx.distance.shortest_path(igraph, source, destination, weight='itime')
+    ipath_itime = 0  # probablement ho traurem
+    for i in range(len(ipath) - 1):
+         ipath_itime += igraph[ipath[i]][ipath[i + 1]]['itime']
+    if ipath_itime == float('inf'):
         return None
-    return [node_to_coordinates(igraph, id) for id in shortest_ipath]
+    return [node_to_coordinates(igraph, id) for id in ipath]
 
 
 def get_highways_plot(graph, highways, size):
@@ -261,18 +264,18 @@ def get_igraph_plot(igraph, size):
 
 def get_path_plot(ipath, size):
     map = staticmap.StaticMap(size, size)
-    origin_icon = staticmap.IconMarker(ipath[0], './icons/origin.png', 10, 32)
+    source_icon = staticmap.IconMarker(ipath[0], './icons/source.png', 10, 32)
     destination_icon = staticmap.IconMarker(ipath[-1], './icons/destination.png', 10, 32)
     path_line = staticmap.Line(ipath, 'ForestGreen', 3)
     map.add_line(path_line)
-    map.add_marker(origin_icon)
+    map.add_marker(source_icon)
     map.add_marker(destination_icon)
     return map
 
 
 def get_location_plot(location, size):
     map = staticmap.StaticMap(size, size)
-    location_icon = staticmap.IconMarker(location, './icons/origin.png', 10, 32)
+    location_icon = staticmap.IconMarker(location, 'icons/source.png', 10, 32)
     map.add_marker(location_icon)
     return map
 
@@ -331,11 +334,11 @@ def test():
     print("We now have the most intelligent graph ever plotted into a marvelous PNG image UwU")
 
     # get 'intelligent path' between two addresses
-    origin = name_to_coordinates("Campus Nord", PLACE)
+    source = name_to_coordinates("Campus Nord", PLACE)
     destination = name_to_coordinates("Carrer Cardó, 6", PLACE)
-    ipath = get_ipath(igraph, origin, destination)
+    ipath = get_ipath(igraph, source, destination)
     # plot the path into a PNG image
-    save_image(get_path_plot(ipath, SIZE), 'path.png')
+    save_image(get_path_plot(ipath, SIZE), 'ipath.png')
     print("path.")
 
 

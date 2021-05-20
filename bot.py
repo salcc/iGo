@@ -99,17 +99,17 @@ def query_handler(update, context):
 def plot_path(update, context):
     lang = get_language(update, context)
 
-    origin = context.user_data['location']
+    source = context.user_data['location']
     destination = context.user_data['destination']
-    if origin == destination:
+    if source == destination:
         context.bot.send_message(chat_id=update.effective_chat.id, text=message('Oh, you are already here!', lang) + ' 🥳')
     else:
         congestions = igo.download_congestions(CONGESTIONS_URL)
         igraph = igo.build_igraph(graph, highways, congestions)
-        ipath = igo.get_ipath(igraph, origin, destination)
+        ipath = igo.get_ipath(igraph, source, destination)
         if ipath:    
             path_plot = igo.get_path_plot(ipath, SIZE)
-            filename = 'ipath-{}-{}.png'.format(origin, destination)
+            filename = 'ipath-{}-{}.png'.format(source, destination)
             igo.save_image(path_plot, filename)
             context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, 'rb'))
             os.remove(filename)
