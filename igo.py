@@ -53,8 +53,7 @@ def name_to_coordinates(name, place):
 
 
 def coordinates_to_node(graph, coordinates):
-    # return osmnx.distance.nearest_nodes(coordinates.latitude, coordinates.longitude, graph)
-    return osmnx.get_nearest_node(graph, coordinates)
+    return osmnx.distance.nearest_nodes(graph, coordinates.latitude, coordinates.longitude)
 
 
 def node_to_coordinates(graph, node_id):
@@ -156,27 +155,29 @@ def build_igraph_with_congestions(graph, highway_paths, congestions):
     return igraph
 
 
-def bearing_itime(igraph, in_node, out_node):
-    return 0  # TODO: haurem d'utilitzar el graf original (primer hem de cirdar la funció de l'add bearing potser??)
+def bearing_itime(igraph, predecessor, node, successor):
+    return 0 # TODO
 
 
 def build_igraph_with_bearings(igraph):
+    osmnx.bearing.add_edge_bearings(igraph)
+
     igraph_with_bearings = networkx.DiGraph()
     for node, node_data in igraph.nodes(data=True):
         in_nodes, out_nodes = [], []
         for predecessor in igraph.predecessors(node):
-            # I3_2: vèrtex de 3, entrant des de 2 (in)
-            id = 'I' + str(node) + '_' + str(predecessor)
+            # I_3_2: vèrtex de 3, entrant des de 2 (in)
+            id = 'I_' + str(node) + '_' + str(predecessor)
             igraph_with_bearings.add_node(id, x=node_data['x'], y=node_data['y'], metanode=node)
-            in_nodes.append(id)
+            in_nodes.append((id, predecessor))
         for successor in igraph.successors(node):
-            # O0_1, vèrtex de 0, sortint cap a 1  (out)
-            id = 'O' + str(node) + '_' + str(successor)
+            # O_0_1, vèrtex de 0, sortint cap a 1  (out)
+            id = 'O_' + str(node) + '_' + str(successor)
             igraph_with_bearings.add_node(id, x=node_data['x'], y=node_data['y'], metanode=node)
-            out_nodes.append(id)
-        for in_node in in_nodes:
-            for out_node in out_nodes:
-                igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, in_node, out_node))
+            out_nodes.append((id, successor))
+        for in_node, predecessor in in_nodes:
+            for out_node, successor in out_nodes:
+                igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, predecessor, node, successor))
 
         igraph_with_bearings.add_node('S_' + str(node), x=node_data['x'], y=node_data['y'], metanode=node)
         for in_node in in_nodes:
@@ -187,7 +188,7 @@ def build_igraph_with_bearings(igraph):
 
     # real edges
     for node1, node2, edge_data in igraph.edges(data=True):
-        igraph_with_bearings.add_edge('O' + str(node1) + '_' + str(node2), 'I' + str(node2) + '_' + str(node1),
+        igraph_with_bearings.add_edge('O_' + str(node1) + '_' + str(node2), 'I_' + str(node2) + '_' + str(node1),
                                       itime=edge_data['itime'], length=edge_data['length'])
 
     return igraph_with_bearings
