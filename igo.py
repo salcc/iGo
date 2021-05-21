@@ -1,4 +1,4 @@
-from math import exp
+import math
 import collections
 import pickle
 import re
@@ -138,7 +138,7 @@ def get_highway_paths(graph, highways):
 
 
 def congestion_function(congestion_state):
-    return exp((congestion_state - 1) ** 2 / 7.5)
+    return math.exp((congestion_state - 1) ** 2 / 7.5)
 
 
 def build_igraph_with_congestions(graph, highway_paths, congestions):
@@ -156,7 +156,15 @@ def build_igraph_with_congestions(graph, highway_paths, congestions):
 
 
 def bearing_itime(igraph, predecessor, node, successor):
-    return 0 # TODO
+    bearing = igraph[node][successor]['bearing'] - igraph[predecessor][node]['bearing'] - math.pi
+    side_factor = 1
+    if bearing < 0:
+        side_factor = 1.5
+    if bearing < 2.4:
+        bearing_cost = math.exp(bearing) - 1
+    else:
+        bearing_cost = math.log(5000 * (x - 0.75) ** 3)
+    return bearing_cost * side_factor
 
 
 def build_igraph_with_bearings(igraph):
