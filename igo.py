@@ -159,10 +159,12 @@ def build_igraph_with_congestions(graph, highway_paths, congestions):
 
 
 def bearing_itime(igraph, predecessor, node, successor):
-    bearing = abs(math.radians(igraph[node][successor]['bearing'] - igraph[predecessor][node]['bearing'] - 180))
+    # return 0
+    bearing = math.radians(igraph[node][successor]['bearing'] - igraph[predecessor][node]['bearing'] - 180)
     side_factor = 1
     if bearing < 0:
         side_factor = 1.5
+        bearing = -bearing
     if bearing < 2.4:
         bearing_cost = math.exp(bearing) - 1
     else:
@@ -345,8 +347,8 @@ def test():
     print("We now have the most intelligent graph ever plotted into a marvelous PNG image UwU")
 
     # get 'intelligent path' between two addresses
-    source = name_to_coordinates("Campus Nord", PLACE)
-    destination = name_to_coordinates("Carrer Cardó, 6", PLACE)
+    source = name_to_coordinates("Trinitat Nova", PLACE)
+    destination = name_to_coordinates("Port Vell", PLACE)
     ipath = get_ipath(igraph, source, destination)
     # plot the path into a PNG image
     save_image(get_path_plot(ipath, SIZE), 'ipath.png')
