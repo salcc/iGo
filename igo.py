@@ -53,7 +53,8 @@ def name_to_coordinates(name, place):
 
 
 def coordinates_to_node(graph, coordinates):
-    return osmnx.distance.nearest_nodes(graph, coordinates.latitude, coordinates.longitude)
+    # return osmnx.get_nearest_node(graph, coordinates)
+    return osmnx.distance.nearest_nodes(graph, coordinates.longitude, coordinates.latitude)
 
 
 def node_to_coordinates(graph, node_id):
@@ -68,7 +69,9 @@ def path_to_coordinates(graph, path):
 
 
 def download_graph(place):
-    graph = osmnx.graph_from_place(place, network_type='drive')
+    graph = osmnx.graph_from_place(place, network_type='drive', simplify=True)
+    graph.remove_edges_from(networkx.selfloop_edges(graph))
+    graph = osmnx.bearing.add_edge_bearings(graph)
     graph = osmnx.utils_graph.get_digraph(graph, weight='length')
     return graph
 
@@ -156,21 +159,20 @@ def build_igraph_with_congestions(graph, highway_paths, congestions):
 
 
 def bearing_itime(igraph, predecessor, node, successor):
-    bearing = igraph[node][successor]['bearing'] - igraph[predecessor][node]['bearing'] - math.pi
+    bearing = abs(math.radians(igraph[node][successor]['bearing'] - igraph[predecessor][node]['bearing'] - 180))
     side_factor = 1
     if bearing < 0:
         side_factor = 1.5
     if bearing < 2.4:
         bearing_cost = math.exp(bearing) - 1
     else:
-        bearing_cost = math.log(5000 * (x - 0.75) ** 3)
+        bearing_cost = math.log(5000 * (bearing - 0.75) ** 3)
     return bearing_cost * side_factor
 
 
 def build_igraph_with_bearings(igraph):
-    osmnx.bearing.add_edge_bearings(igraph)
-
     igraph_with_bearings = networkx.DiGraph()
+    igraph_with_bearings.graph['crs'] = igraph.graph['crs']
     for node, node_data in igraph.nodes(data=True):
         in_nodes, out_nodes = [], []
         for predecessor in igraph.predecessors(node):
@@ -188,10 +190,10 @@ def build_igraph_with_bearings(igraph):
                 igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, predecessor, node, successor))
 
         igraph_with_bearings.add_node('S_' + str(node), x=node_data['x'], y=node_data['y'], metanode=node)
-        for in_node in in_nodes:
+        for in_node, predecessor in in_nodes:
             igraph_with_bearings.add_edge('S_' + str(node), in_node, itime=0)
         igraph_with_bearings.add_node('D_' + str(node), x=node_data['x'], y=node_data['y'], metanode=node)
-        for out_node in out_nodes:
+        for out_node, successor in out_nodes:
             igraph_with_bearings.add_edge(out_node, 'D_' + str(node), itime=0)
 
     # real edges
@@ -211,7 +213,7 @@ def build_igraph(graph, highway_paths, congestions):
 def get_ipath(igraph, source, destination):
     source = 'S_' + str(igraph.nodes[coordinates_to_node(igraph, source)]['metanode'])
     destination = 'D_' + str(igraph.nodes[coordinates_to_node(igraph, destination)]['metanode'])
-    ipath = osmnx.distance.shortest_path(igraph, source, destination, weight='itime')
+    ipath = osmnx.distance.shortest_path(igraph, [source], [destination], weight='itime')[0]
     ipath_itime = 0  # probablement ho traurem
     for i in range(len(ipath) - 1):
          ipath_itime += igraph[ipath[i]][ipath[i + 1]]['itime']
