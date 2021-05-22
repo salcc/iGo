@@ -1,0 +1,9 @@
+venv/
+cache/
+graph.dat
+highways.dat
+highways.png
+congestions.png
+igraph.png
+ipath.png
+token.txt
