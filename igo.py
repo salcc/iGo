@@ -161,7 +161,7 @@ def build_igraph_with_congestions(graph, highway_paths, congestions):
 def bearing_itime(igraph, predecessor, node, successor):
     # return 0
     bearing = igraph[node][successor]['bearing'] - igraph[predecessor][node]['bearing'] - 180
-    if bearing < -179.9: 
+    if bearing < -180: 
         bearing += 360
     side_factor = 1
     if bearing < -15:
@@ -169,10 +169,10 @@ def bearing_itime(igraph, predecessor, node, successor):
     if bearing < 0:
         bearing = -bearing
     if bearing < 50:
-        bearing_cost = math.exp(bearing/45) - 1
+        bearing_cost = math.exp(bearing / 45) - 1
     else:
         bearing_cost = math.log((bearing - 45) ** 2)
-    #print('b1: ',igraph[predecessor][node]['bearing'],'b2: ',igraph[node][successor]['bearing'], 'Tb: ', bearing, 'sf: ', side_factor, 'cost: ', bearing_cost*side_factor)
+    # print('b1: ', igraph[predecessor][node]['bearing'], 'b2: ',igraph[node][successor]['bearing'], 'Tb: ', bearing, 'sf: ', side_factor, 'cost: ', bearing_cost * side_factor)
     return bearing_cost * side_factor
 
 
