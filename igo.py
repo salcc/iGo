@@ -1,4 +1,5 @@
 import math
+import statistics
 import collections
 import pickle
 import re
@@ -109,7 +110,7 @@ def set_default_itime(graph):
         if 'maxspeed' in edge_data:
             if type(edge_data['maxspeed']) is list:
                 maxspeeds = [float(maxspeed) for maxspeed in edge_data['maxspeed']]
-                edge_data['maxspeed'] = sum(maxspeeds) / len(maxspeeds)
+                edge_data['maxspeed'] = statistics.mean(maxspeeds)
             else:
                 edge_data['maxspeed'] = float(edge_data['maxspeed'])
         else:
@@ -149,30 +150,52 @@ def build_igraph_with_congestions(graph, highway_paths, congestions):
     for way_id, highway_path in highway_paths.items():
         congestion_state = congestions[way_id].current_state
         for i in range(len(highway_path) - 1):
-            if congestion_state == 6:
-                igraph[highway_path[i]][highway_path[i + 1]]['itime'] = float('inf')
+            if 'congestions' not in igraph[highway_path[i]][highway_path[i + 1]]:
+                igraph[highway_path[i]][highway_path[i + 1]]['congestions'] = [congestion_state]
             else:
                 if congestion_state == 0:
                     congestion_state = 1
-                igraph[highway_path[i]][highway_path[i + 1]]['itime'] *= congestion_function(congestion_state)
+                igraph[highway_path[i]][highway_path[i + 1]]['congestions'].append(congestion_state)
+    
+    for node1, node2, edge_data in igraph.edges(data=True):
+        if 'congestions' in igraph[node1][node2]:
+            edge_congestions = igraph[node1][node2]['congestions']
+            if 6 in edge_congestions:
+                igraph[node1][node2]['itime'] = float('inf')
+            else:
+                igraph[node1][node2]['itime'] *= congestion_function(statistics.mean(edge_congestions))
+            
     return igraph
 
 
 def bearing_itime(igraph, predecessor, node, successor):
     # return 0
-    bearing = igraph[node][successor]['bearing'] - igraph[predecessor][node]['bearing'] - 180
-    if bearing < -180: 
+    
+    bearing = igraph[node][successor]['bearing'] - igraph[predecessor][node]['bearing']
+    if bearing < -180:
         bearing += 360
+    elif bearing > 180:
+        bearing -= 360
+    
     side_factor = 1
     if bearing < -15:
         side_factor = 1.5
+    
     if bearing < 0:
         bearing = -bearing
+    
     if bearing < 50:
         bearing_cost = math.exp(bearing / 45) - 1
     else:
         bearing_cost = math.log((bearing - 45) ** 2)
-    # print('b1: ', igraph[predecessor][node]['bearing'], 'b2: ',igraph[node][successor]['bearing'], 'Tb: ', bearing, 'sf: ', side_factor, 'cost: ', bearing_cost * side_factor)
+
+    # print('b(p,n)=', igraph[predecessor][node]['bearing'], ' b(n,s)=',igraph[node][successor]['bearing'], ' B=', bearing,
+    #       ' F=', side_factor, ' C=', bearing_cost * side_factor, sep='')
+    # print((igraph.nodes[predecessor]['y'], igraph.nodes[predecessor]['x']),
+    #       (igraph.nodes[node]['y'], igraph.nodes[node]['x']),
+    #       (igraph.nodes[successor]['y'], igraph.nodes[successor]['x']))
+    # print()
+
     return bearing_cost * side_factor
 
 
@@ -263,10 +286,11 @@ def get_igraph_plot(igraph, size):
     for node1, node2, edge_data in igraph.edges(data=True):
         if 'length' in edge_data:
             ispeed = edge_data['length'] / edge_data['itime']
-            if ispeed < min_ispeed:
-                min_ispeed = ispeed
-            if ispeed > max_ispeed:
-                max_ispeed = ispeed
+            if ispeed != 0:
+                if ispeed < min_ispeed:
+                    min_ispeed = ispeed
+                if ispeed > max_ispeed:
+                    max_ispeed = ispeed
 
     map = staticmap.StaticMap(size, size)
     for node1, node2, edge_data in igraph.edges(data=True):
