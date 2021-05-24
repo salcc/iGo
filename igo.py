@@ -38,7 +38,9 @@ def load_data(filename):
 
 
 def is_in_place(coordinates, place):
-    """Returns True if the 'coordinates' are in the specified 'place', which should be specified with a string."""
+    """Returns True if the 'coordinates' are in the 'place', which should be specified with a
+    string.
+    """
     point = shapely.geometry.Point(coordinates.longitude, coordinates.latitude)
     shape = osmnx.geocode_to_gdf(place).loc[0, "geometry"]
     return shape.intersects(point)
@@ -59,15 +61,32 @@ def name_to_coordinates(name, place):
 
 
 def coordinates_to_node(graph, coordinates):
+    """Returns the node in the 'graph' that is closest to the given 'coordinates'.
+    
+    Preconditon: All the nodes of the graph should have two attributes 'x' and 'y', which indicate
+    its latitude and longitude, respectively.
+    
+    Note: If several nodes are at the same distance, only one of them is returned.
+    """
     return osmnx.distance.nearest_nodes(graph, coordinates.longitude, coordinates.latitude)
-    # TODO: Implement our nearest_node function.
+    # TODO: Implement our own nearest_node function.
 
 
 def node_to_coordinates(graph, node_id):
+    """Returns the coordinates of the node of the 'graph' identified by 'node_id'.
+    
+    Precondition: The node should have two attributes 'x' and 'y', which indicate its latitude
+    and longitude, respectively.
+    """
     return Coordinates(graph.nodes[node_id]["x"], graph.nodes[node_id]["y"])
 
 
-def path_to_coordinates(graph, path):
+def nodes_to_coordinates_list(graph, node_list):
+    """Returns a list of Coordinates given the list of nodes 'node_list' of the 'graph'.
+    
+    Precondition: The nodes should have two attributes 'x' and 'y', which indicate their latitude
+    and longitude, respectively.
+    """
     return [node_to_coordinates(graph, node) for node in path]
 
 
@@ -256,7 +275,7 @@ def get_ipath(igraph, source, destination):
 def get_highways_plot(graph, highways, size):
     map = staticmap.StaticMap(size, size)
     for way_id, path in highways.items():
-        highway_line = staticmap.Line(path_to_coordinates(graph, path), "red", 2)
+        highway_line = staticmap.Line(nodes_to_coordinates_list(graph, path), "red", 2)
         map.add_line(highway_line)
     return map
 
@@ -266,7 +285,7 @@ def get_congestions_plot(graph, highways, congestions, size):
     for way_id, path in highways.items():
         congestion_state = congestions[way_id].current_state
         congestion_colors = ["#a9a9a9", "#228b22", "#7cfc00", "#ffa500", "#ff4500", "#bb0202", "#510101"]
-        congestion_line = staticmap.Line(path_to_coordinates(graph, path), congestion_colors[congestion_state], 2)
+        congestion_line = staticmap.Line(nodes_to_coordinates_list(graph, path), congestion_colors[congestion_state], 2)
         map.add_line(congestion_line)
     return map
 
