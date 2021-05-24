@@ -87,7 +87,7 @@ def nodes_to_coordinates_list(graph, node_list):
     Precondition: The nodes should have two attributes 'x' and 'y', which indicate their latitude
     and longitude, respectively.
     """
-    return [node_to_coordinates(graph, node) for node in path]
+    return [node_to_coordinates(graph, node) for node in node_list]
 
 
 def download_graph(place):
