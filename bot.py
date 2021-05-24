@@ -51,7 +51,8 @@ def get_coordinates(context, update, place_name, place):
                                      text=message("I'm sorry, there are no results for ", lang) + place_name +
                                           message(" in Barcelona.", lang) + " 😥")
     else:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="You haven't told me where!" + " ☹️")
+        context.bot.send_message(chat_id=update.effective_chat.id, text=message("You haven't told me where you want to go!", lang)
+                                                                        + " ☹️")
 
 
 def go(update, context):
@@ -163,10 +164,10 @@ def help(update, context):
 
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text=message("/go [destination] - I will show you a map with the fastest way to go from your current"
-                                          " location  (green marker) to the destination (red marker) that you tell me when you "
+                                          " location (green marker) to the destination (red marker) that you tell me when you "
                                           "use the command. This path is calculated taking into account the current traffic data "
                                           "of Barcelona.", lang) + " 🚗\n\n" +
-                                  message("/where - I will show you a map with your current location indicated with a green"
+                                  message("/where - I will show you a map with your current location indicated with a green "
                                           "marker.", lang) + " 🗺️\n\n" +
                                   message("/setlang [language code] - I will talk to you in the language you choose from Catalan "
                                           "[ca], Spanish [es] and English [en].", lang) + " 🌐\n\n" +
