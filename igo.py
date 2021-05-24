@@ -30,7 +30,7 @@ def save_data(data, filename):
 def load_data(filename):
     """Returns an object that has previously been stored in a file with the specified 'filename'.
     
-    Precondition: The file with the specified filename exists and is a pickled representation of the object.
+    Precondition: The file exists and is a pickled representation of the object.
     """
     with open(filename, "rb") as file:
         data = pickle.load(file)
@@ -38,7 +38,7 @@ def load_data(filename):
 
 
 def is_in_place(coordinates, place):
-    """Returns True if the 'coordinates' are in the specified 'place', which should be an string."""
+    """Returns True if the 'coordinates' are in the specified 'place', which should be specified with a string."""
     point = shapely.geometry.Point(coordinates.longitude, coordinates.latitude)
     shape = osmnx.geocode_to_gdf(place).loc[0, "geometry"]
     return shape.intersects(point)
