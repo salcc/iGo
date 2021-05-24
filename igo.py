@@ -28,7 +28,7 @@ def save_data(data, filename):
 
 
 def load_data(filename):
-    """Returns an object that has been stored in a file with the specified 'filename'.
+    """Returns an object that has previously been stored in a file with the specified 'filename'.
     
     Precondition: The file with the specified filename exists and is a pickled representation of the object.
     """
@@ -38,6 +38,7 @@ def load_data(filename):
 
 
 def is_in_place(coordinates, place):
+    """Returns True if the 'coordinates' are in the specified 'place', which should be an string."""
     point = shapely.geometry.Point(coordinates.longitude, coordinates.latitude)
     shape = osmnx.geocode_to_gdf(place).loc[0, "geometry"]
     return shape.intersects(point)
@@ -45,7 +46,6 @@ def is_in_place(coordinates, place):
 
 coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
 separator_regex = re.compile(r'[,\s]\s*')
-
 def name_to_coordinates(name, place):
     if coordinates_regex.fullmatch(name):
         lat, lng = re.split(separator_regex, name)
@@ -59,8 +59,8 @@ def name_to_coordinates(name, place):
 
 
 def coordinates_to_node(graph, coordinates):
-    # return osmnx.get_nearest_node(graph, coordinates)
     return osmnx.distance.nearest_nodes(graph, coordinates.longitude, coordinates.latitude)
+    # TODO: Implement our nearest_node function.
 
 
 def node_to_coordinates(graph, node_id):
@@ -68,10 +68,7 @@ def node_to_coordinates(graph, node_id):
 
 
 def path_to_coordinates(graph, path):
-    path_coordinates = []
-    for node in path:
-        path_coordinates.append(node_to_coordinates(graph, node))
-    return path_coordinates
+    return [node_to_coordinates(graph, node) for node in path]
 
 
 def download_graph(place):
