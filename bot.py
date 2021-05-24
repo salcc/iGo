@@ -11,7 +11,6 @@ def get_language(update, context):
     return context.user_data["language"]
 
 
-# defineix una funció que saluda i que s'executarà quan el bot rebi el missatge /start
 def start(update, context):
     lang = get_language(update, context)
 
@@ -221,11 +220,14 @@ if __name__ == "__main__":
     else:
         highways = igo.load_data(HIGHWAYS_FILENAME)
 
-    # declara una constant amb l'access token que llegeix de token.txt
-    TOKEN = open("token.txt").read().strip()
+    # Read the bot acces token from the file 'token.txt'
+    with open("token.txt","r") as file:
+        TOKEN = file.read().strip()
 
-    # crea objectes per treballar amb Telegram
+    # Create the Updater and pass it the bot token
     updater = Updater(token=TOKEN, use_context=True)
+
+    # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler("start", start))
@@ -239,7 +241,12 @@ if __name__ == "__main__":
     dispatcher.add_handler(CallbackQueryHandler(query_handler))
     dispatcher.add_handler(MessageHandler(Filters.location, location_handler))
 
-    # engega el bot
+    # Start the Bot
     updater.start_polling()
+    print("Bot running.")
 
-    print("Bot running")
+    # Run the bot until Ctrl+C is pressed.
+    updater.idle()
+
+    print()
+    print("Bot dead.")
