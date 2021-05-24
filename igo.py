@@ -15,31 +15,36 @@ Coordinates = collections.namedtuple('Coordinates', 'latitude longitude')
 Highway = collections.namedtuple('Highway', 'description coordinates_list')
 Congestion = collections.namedtuple('Congestion', 'datetime current_state planned_state')
 
-coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
-separator_regex = re.compile(r'[,\s]\s*')
-
 
 def file_exists(filename):
+    """Returns True if the file with the specified 'filename' is an existing regular file."""
     return os.path.isfile(filename)
 
 
 def save_data(data, filename):
+    """Saves the object 'data' to a file with the specified 'filename'."""
     with open(filename, 'wb') as file:
         pickle.dump(data, file)
 
 
 def load_data(filename):
+    """Returns an object that has been stored in a file with the specified 'filename'.
+    
+    Precondition: The file with the specified filename exists and is a pickled representation of the object.
+    """
     with open(filename, 'rb') as file:
         data = pickle.load(file)
         return data
 
 
 def is_in_place(coordinates, place):
-    gdf = osmnx.geocode_to_gdf(place)
-    shape = gdf.loc[0, 'geometry']
     point = shapely.geometry.Point(coordinates.longitude, coordinates.latitude)
+    shape = osmnx.geocode_to_gdf(place).loc[0, 'geometry']
     return shape.intersects(point)
 
+
+coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
+separator_regex = re.compile(r'[,\s]\s*')
 
 def name_to_coordinates(name, place):
     if coordinates_regex.fullmatch(name):
@@ -321,7 +326,7 @@ def get_location_plot(location, size):
     return map
 
 
-def save_image(map, output_filename):
+def save_map_as_image(map, output_filename):
     map_image = map.render()
     map_image.save(output_filename)
 
@@ -358,20 +363,20 @@ def test():
         save_data(highways, HIGHWAYS_FILENAME)
         print("Processing finished!")
     # plot the highways into a PNG image
-    save_image(get_highways_plot(graph, highways, SIZE), 'highways.png')
+    save_map_as_image(get_highways_plot(graph, highways, SIZE), 'highways.png')
     print("Highways have been plotted into a precious map :)")
 
     # download congestions (we download them every time because they are updated every 5 minutes)
     congestions = download_congestions(CONGESTIONS_URL)
     # plot the congestions into a PNG image
-    save_image(get_congestions_plot(graph, highways, congestions, SIZE), 'congestions.png')
+    save_map_as_image(get_congestions_plot(graph, highways, congestions, SIZE), 'congestions.png')
     print("Congestions downloaded and plotted into a very beautiful image :)")
 
     # get the 'intelligent graph' version of the graph (taking into account the congestions of the highways)
     igraph = build_igraph(graph, highways, congestions)
     print("The igraph have been built!!! The mean IQ of the planet has increased by 3 points ^-^")
     # plot the igraph into a PNG image
-    save_image(get_igraph_plot(igraph, SIZE), 'igraph.png')
+    save_map_as_image(get_igraph_plot(igraph, SIZE), 'igraph.png')
     print("We now have the most intelligent graph ever plotted into a marvelous PNG image UwU")
 
     # get 'intelligent path' between two addresses
@@ -379,7 +384,7 @@ def test():
     destination = name_to_coordinates("Port Vell", PLACE)
     ipath = get_ipath(igraph, source, destination)
     # plot the path into a PNG image
-    save_image(get_path_plot(ipath, SIZE), 'ipath.png')
+    save_map_as_image(get_path_plot(ipath, SIZE), 'ipath.png')
     print("path.")
 
 
