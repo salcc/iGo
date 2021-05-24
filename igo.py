@@ -10,6 +10,7 @@ import osmnx
 import staticmap
 import networkx
 import shapely.geometry
+import haversine
 
 Coordinates = collections.namedtuple("Coordinates", "latitude longitude")
 Highway = collections.namedtuple("Highway", "description coordinates_list")
@@ -68,8 +69,17 @@ def coordinates_to_node(graph, coordinates):
     
     Note: If several nodes are at the same distance, only one of them is returned.
     """
-    return osmnx.distance.nearest_nodes(graph, coordinates.longitude, coordinates.latitude)
-    # TODO: Implement our own nearest_node function.
+    nearest_node = None
+    nearest_distance = float("inf")
+
+    for node, node_data in graph.nodes(data=True):
+        distance = haversine.haversine((node_data["x"], node_data["y"]), coordinates)
+        if distance < nearest_distance:
+            nearest_distance = distance
+            nearest_node = node
+    
+    return nearest_node
+    # return osmnx.distance.nearest_nodes(graph, coordinates.longitude, coordinates.latitude)
 
 
 def node_to_coordinates(graph, node_id):
