@@ -343,6 +343,8 @@ def get_location_plot(location, size):
 
 
 def save_map_as_image(map, output_filename):
+    """Saves the StaticMap 'map' to a image, which will have the name specified in
+    'output_filename'. The format to use is determined from the filename extension."""
     map_image = map.render()
     map_image.save(output_filename)
 
