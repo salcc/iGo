@@ -29,7 +29,7 @@ def save_data(data, filename):
 
 def load_data(filename):
     """Returns an object that has previously been stored in a file with the specified 'filename'.
-    
+
     Precondition: The file exists and is a pickled representation of the object.
     """
     with open(filename, "rb") as file:
@@ -61,22 +61,23 @@ def name_to_coordinates(name, place):
 
 
 def haversine(coordinates1, coordinates2):
-  """Returns the great-circle distance between two coordinates of two points on the Earth surface.
-  
-  To calculate the result, the function uses the haversine formula.
-  """
-  lng1, lat1 = math.radians(coordinates1.longitude), math.radians(coordinates1.latitude)
-  lng2, lat2 = math.radians(coordinates2.longitude), math.radians(coordinates2.latitude)
-  d = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lng2 - lng1) / 2) ** 2
-  return 2 * 6371008.8 * math.asin(math.sqrt(d))
+    """Returns the great-circle distance between two points on the Earth surface, given their
+    coordinates.
+
+    To calculate the result, the function uses the haversine formula.
+    """
+    lng1, lat1 = math.radians(coordinates1.longitude), math.radians(coordinates1.latitude)
+    lng2, lat2 = math.radians(coordinates2.longitude), math.radians(coordinates2.latitude)
+    d = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lng2 - lng1) / 2) ** 2
+    return 2 * 6371008.8 * math.asin(math.sqrt(d))
 
 
 def coordinates_to_node(graph, coordinates):
     """Returns the node in the 'graph' that is closest to the given 'coordinates'.
-    
+
     Preconditon: All the nodes of the graph should have two attributes 'x' and 'y', which indicate
     their longitude and latitude, respectively.
-    
+
     Note: If several nodes are at the same distance, only one of them is returned.
     """
     nearest_node = None
@@ -87,13 +88,13 @@ def coordinates_to_node(graph, coordinates):
         if distance < nearest_distance:
             nearest_distance = distance
             nearest_node = node
-    
+
     return nearest_node
 
 
 def node_to_coordinates(graph, node_id):
     """Returns the coordinates of the node of the 'graph' identified by 'node_id'.
-    
+
     Precondition: The node should have two attributes 'x' and 'y', which indicate its longitude
     and latitude, respectively.
     """
@@ -102,7 +103,7 @@ def node_to_coordinates(graph, node_id):
 
 def nodes_to_coordinates_list(graph, node_list):
     """Returns a list of Coordinates given the list of nodes 'node_list' of the 'graph'.
-    
+
     Precondition: The nodes should have two attributes 'x' and 'y', which indicate their longitude
     and latitude, respectively.
     """
@@ -191,7 +192,7 @@ def build_dynamic_igraph(igraph, highway_paths, congestions):
                 if congestion_state == 0:
                     congestion_state = 1
                 igraph[node1][node2]["congestions"].append(congestion_state)
-    
+
     for node1, node2 in igraph.edges():
         if "congestions" in igraph[node1][node2]:
             edge_congestions = igraph[node1][node2]["congestions"]
@@ -204,20 +205,20 @@ def build_dynamic_igraph(igraph, highway_paths, congestions):
 
 def bearing_itime(igraph, predecessor, node, successor):
     # return 0
-    
+
     bearing = igraph[node][successor]["bearing"] - igraph[predecessor][node]["bearing"]
     if bearing < -180:
         bearing += 360
     elif bearing > 180:
         bearing -= 360
-    
+
     side_factor = 1
     if bearing < -15:
         side_factor = 1.5
-    
+
     if bearing < 0:
         bearing = -bearing
-    
+
     if bearing < 50:
         bearing_cost = math.exp(bearing / 45) - 1
     else:
@@ -404,7 +405,6 @@ def test():
     else:
         igraph = build_static_igraph(graph)
         save_data(igraph, STATIC_IGRAPH_FILENAME)
-
 
     # download congestions (we download them every time because they are updated every 5 minutes)
     congestions = download_congestions(CONGESTIONS_URL)
