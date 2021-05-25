@@ -17,18 +17,18 @@ Congestion = collections.namedtuple("Congestion", "datetime current_state planne
 
 
 def file_exists(filename):
-    """Returns True if the file with the specified 'filename' is an existing regular file."""
+    """Returns True if the file with the specified filename is an existing regular file."""
     return os.path.isfile(filename)
 
 
 def save_data(data, filename):
-    """Saves the object 'data' to a file with the specified 'filename'."""
+    """Saves the object 'data' to a file with the specified filename."""
     with open(filename, "wb") as file:
         pickle.dump(data, file)
 
 
 def load_data(filename):
-    """Returns an object that has previously been stored in a file with the specified 'filename'.
+    """Returns an object that has previously been stored in a file with the specified filename.
 
     Precondition: The file exists and is a pickled representation of the object.
     """
@@ -38,9 +38,7 @@ def load_data(filename):
 
 
 def is_in_place(coordinates, place):
-    """Returns True if the 'coordinates' are in the 'place', which should be specified with a
-    string.
-    """
+    """Returns True if the coordinates are in the 'place', which should be specified with a string."""
     point = shapely.geometry.Point(coordinates.longitude, coordinates.latitude)
     shape = osmnx.geocode_to_gdf(place).loc[0, "geometry"]
     return shape.intersects(point)
@@ -73,7 +71,7 @@ def haversine(coordinates1, coordinates2):
 
 
 def coordinates_to_node(graph, coordinates):
-    """Returns the node in the 'graph' that is closest to the given 'coordinates'.
+    """Returns the node of the graph that is closest to the given coordinates.
 
     Preconditon: All the nodes of the graph should have two attributes 'x' and 'y', which indicate
     their longitude and latitude, respectively.
@@ -93,7 +91,7 @@ def coordinates_to_node(graph, coordinates):
 
 
 def node_to_coordinates(graph, node_id):
-    """Returns the coordinates of the node of the 'graph' identified by 'node_id'.
+    """Returns the coordinates of the node of the graph identified by 'node_id'.
 
     Precondition: The node should have two attributes 'x' and 'y', which indicate its longitude
     and latitude, respectively.
@@ -102,7 +100,7 @@ def node_to_coordinates(graph, node_id):
 
 
 def nodes_to_coordinates_list(graph, node_list):
-    """Returns a list of Coordinates given the list of nodes 'node_list' of the 'graph'.
+    """Returns a list of Coordinates given a list of nodes of the graph.
 
     Precondition: The nodes should have two attributes 'x' and 'y', which indicate their longitude
     and latitude, respectively.
@@ -123,12 +121,11 @@ def download_highways(highways_url):
     """Downloads a file from the specified 'highways_url', which contains information about some of
     the main street sections of Barcelona. 
     
-    Each line represents a highway specified with its id which is an integer not bigger than 535,
-    its name or description and a list of pairs of longitude-latitude coordinates, all this 
-    separated by commas. These coordinates are the points that would define the highway in a map.
+    Each line represents a highway specified with an id which is an integer, its name or
+    description and a list of pairs of longitude-latitude coordinates, all this separated by commas.
+    These coordinates are the points that would define the highway in a map.
 
-    This information is stored and returned as a dictionary with the id's as keys and Highways as 
-    values.
+    This information is stored and returned as a dictionary from id's to Highway.
     """
     with urllib.request.urlopen(highways_url) as response:
         lines = [line.decode("utf-8") for line in response.readlines()]
@@ -148,15 +145,15 @@ def download_highways(highways_url):
 
 def download_congestions(congestions_url):
     """Downloads a file from the specified 'congestions_url', which contains information about the 
-    current traffic in some of the main street sections of Barcelona. 
+    current traffic in some of the main street sections of Barcelona.
 
     Each line represents a highway specified with its id, the date in format YYYYMMDD and time in 
-    HHMMSS of the last update, the current confestion and the one that is expected in 15 minutes, 
+    HHMMSS of the last update, the current congestion and the one that is expected in 15 minutes, 
     all separated by #. The states are coded with integers from 0 to 6, with the following meanings:
     no data (0), very fluid (1), fluid (2), dense (3), very dense (4), congestioned (5), closed (6).
     
-    This information is updated every 5 minutes and it is stored and returned as a dictionary with 
-    the id's as keys and Congestion's as values.
+    This information is updated every 5 minutes and it is stored and returned as a dictionary from
+    id's to Congestion.
     """
     with urllib.request.urlopen(congestions_url) as response:
         lines = [line.decode("utf-8") for line in response.readlines()]
@@ -177,25 +174,25 @@ def set_default_itime(graph):
     The edge attribute 'maxspeed' is the maximum allowed speed for a vehicle driving in the section
     of road that the edge represents and it is given in km/h. 
     
-    If an edge does not have a maximum speed, it is assumed by default that it is 30km/h based on 
-    the 'City 30' initiative that Barcelona is following, which makes it have more than 50% of its 
-    streets with a 30km/h restriction and a prediction for 2021 for this being a 75%. 
-    (https://www.barcelona.cat/mobilitat/ca/barcelona-ciutat-30)
+    If an edge does not have a maximum speed, it is assumed by default that it is 30 km/h based on 
+    the 'Barcelona 30 City' initiative that Barcelona is following, which makes it have more than
+    50% of its streets with a 30 km/h restriction and a prediction for the end of 2021 for this
+    being a 75%. More info: https://www.barcelona.cat/mobilitat/en/barcelona-30-city.
 
     If an edge has more than one maxspeed, it is assumed that the final one is its mean. In order to 
     have the 'itime' in seconds, this attribute is converted to m/s for all the edges in the graph.
     """
     for node1, node2, edge_data in graph.edges(data=True):
         if "maxspeed" in edge_data:
-            if type(edge_data["maxspeed"]) is list:
+            if type(edge_data["maxspeed"]) is not list:
+                edge_data["maxspeed"] = float(edge_data["maxspeed"])  # some speeds are strings!
+            else:  # for the edges that have more than one 'maxspeed'
                 maxspeeds = [float(maxspeed) for maxspeed in edge_data["maxspeed"]]
                 edge_data["maxspeed"] = statistics.mean(maxspeeds)
-            else:
-                edge_data["maxspeed"] = float(edge_data["maxspeed"])
         else:
-            edge_data["maxspeed"] = 30  # https://www.barcelona.cat/mobilitat/ca/barcelona-ciutat-30
+            edge_data["maxspeed"] = 30
 
-        edge_data["maxspeed"] *= 1000 / 3600 # conversion from km/h to m/s
+        edge_data["maxspeed"] *= 1000 / 3600  # conversion from km/h to m/s
         graph[node1][node2]["itime"] = edge_data["length"] / edge_data["maxspeed"]
 
 
