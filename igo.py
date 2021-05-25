@@ -219,7 +219,7 @@ def set_default_itime(graph):
     for node1, node2, edge_data in graph.edges(data=True):
         if "maxspeed" in edge_data:
             if type(edge_data["maxspeed"]) is not list:
-                edge_data["maxspeed"] = float(edge_data["maxspeed"])  # some speeds are strings!
+                edge_data["maxspeed"] = float(edge_data["maxspeed"])  # 'maxspeed' is originally a string
             else:  # for the edges that have more than one 'maxspeed'
                 maxspeeds = [float(maxspeed) for maxspeed in edge_data["maxspeed"]]
                 edge_data["maxspeed"] = statistics.mean(maxspeeds)
