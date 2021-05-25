@@ -29,7 +29,7 @@ def save_data(data, filename):
 
 def load_data(filename):
     """Returns an object that has previously been stored in a file with the specified 'filename'.
-    
+
     Precondition: The file exists and is a pickled representation of the object.
     """
     with open(filename, "rb") as file:
@@ -61,19 +61,23 @@ def name_to_coordinates(name, place):
 
 
 def haversine(coordinates1, coordinates2):
-  lng1, lat1 = math.radians(coordinates1.longitude), math.radians(coordinates1.latitude)
-  lng2, lat2 = math.radians(coordinates2.longitude), math.radians(coordinates2.latitude)
-  return (2 * 6371008.8 * math.asin(math.sqrt(
-    math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) *
-    math.sin((lng2 - lng1) / 2) ** 2)))
+    """Returns the great-circle distance between two points on the Earth surface, given their
+    coordinates.
+
+    To calculate the result, the function uses the haversine formula.
+    """
+    lng1, lat1 = math.radians(coordinates1.longitude), math.radians(coordinates1.latitude)
+    lng2, lat2 = math.radians(coordinates2.longitude), math.radians(coordinates2.latitude)
+    d = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lng2 - lng1) / 2) ** 2
+    return 2 * 6371008.8 * math.asin(math.sqrt(d))
 
 
 def coordinates_to_node(graph, coordinates):
     """Returns the node in the 'graph' that is closest to the given 'coordinates'.
-    
-    Preconditon: All the nodes of the graph should have two attributes 'y' and 'x', which indicate
-    its latitude and longitude, respectively.  # TODO
-    
+
+    Preconditon: All the nodes of the graph should have two attributes 'x' and 'y', which indicate
+    their longitude and latitude, respectively.
+
     Note: If several nodes are at the same distance, only one of them is returned.
     """
     nearest_node = None
@@ -84,24 +88,24 @@ def coordinates_to_node(graph, coordinates):
         if distance < nearest_distance:
             nearest_distance = distance
             nearest_node = node
-    
+
     return nearest_node
 
 
 def node_to_coordinates(graph, node_id):
     """Returns the coordinates of the node of the 'graph' identified by 'node_id'.
-    
-    Precondition: The node should have two attributes 'y' and 'x', which indicate its latitude
-    and longitude, respectively. # TODO
+
+    Precondition: The node should have two attributes 'x' and 'y', which indicate its longitude
+    and latitude, respectively.
     """
     return Coordinates(graph.nodes[node_id]["x"], graph.nodes[node_id]["y"])
 
 
 def nodes_to_coordinates_list(graph, node_list):
     """Returns a list of Coordinates given the list of nodes 'node_list' of the 'graph'.
-    
-    Precondition: The nodes should have two attributes 'y' and 'x', which indicate their latitude
-    and longitude, respectively. # TODO
+
+    Precondition: The nodes should have two attributes 'x' and 'y', which indicate their longitude
+    and latitude, respectively.
     """
     return [node_to_coordinates(graph, node) for node in node_list]
 
@@ -111,7 +115,7 @@ def build_default_graph(place):
     graph.remove_edges_from(networkx.selfloop_edges(graph))
     graph = osmnx.bearing.add_edge_bearings(graph)
     graph = osmnx.utils_graph.get_digraph(graph, weight="length")
-    graph.subgraph(max(networkx.strongly_connected_components(graph), key=len))
+    graph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
     return graph
 
 
@@ -225,7 +229,7 @@ def build_dynamic_igraph(igraph, highway_paths, congestions):
                 if congestion_state == 0:
                     congestion_state = 1
                 igraph[node1][node2]["congestions"].append(congestion_state)
-    
+
     for node1, node2 in igraph.edges():
         if "congestions" in igraph[node1][node2]:
             edge_congestions = igraph[node1][node2]["congestions"]
@@ -238,20 +242,20 @@ def build_dynamic_igraph(igraph, highway_paths, congestions):
 
 def bearing_itime(igraph, predecessor, node, successor):
     # return 0
-    
+
     bearing = igraph[node][successor]["bearing"] - igraph[predecessor][node]["bearing"]
     if bearing < -180:
         bearing += 360
     elif bearing > 180:
         bearing -= 360
-    
+
     side_factor = 1
     if bearing < -15:
         side_factor = 1.5
-    
+
     if bearing < 0:
         bearing = -bearing
-    
+
     if bearing < 50:
         bearing_cost = math.exp(bearing / 45) - 1
     else:
@@ -275,21 +279,21 @@ def build_igraph_with_bearings(igraph):
         for predecessor in igraph.predecessors(node):
             # I_3_2: vèrtex de 3, entrant des de 2 (in)
             id = "I_" + str(node) + "_" + str(predecessor)
-            igraph_with_bearings.add_node(id, y=node_data["y"], x=node_data["x"], metanode=node)
+            igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             in_nodes.append((id, predecessor))
         for successor in igraph.successors(node):
             # O_0_1, vèrtex de 0, sortint cap a 1  (out)
             id = "O_" + str(node) + "_" + str(successor)
-            igraph_with_bearings.add_node(id, y=node_data["y"], x=node_data["x"], metanode=node)
+            igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             out_nodes.append((id, successor))
         for in_node, predecessor in in_nodes:
             for out_node, successor in out_nodes:
                 igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, predecessor, node, successor))
 
-        igraph_with_bearings.add_node("S_" + str(node), y=node_data["y"], x=node_data["x"], metanode=node)
+        igraph_with_bearings.add_node("S_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
         for in_node, predecessor in in_nodes:
             igraph_with_bearings.add_edge("S_" + str(node), in_node, itime=0)
-        igraph_with_bearings.add_node("D_" + str(node), y=node_data["y"], x=node_data["x"], metanode=node)
+        igraph_with_bearings.add_node("D_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
         for out_node, successor in out_nodes:
             igraph_with_bearings.add_edge(out_node, "D_" + str(node), itime=0)
 
@@ -438,7 +442,6 @@ def test():
     else:
         igraph = build_static_igraph(graph)
         save_data(igraph, STATIC_IGRAPH_FILENAME)
-
 
     # download congestions (we download them every time because they are updated every 5 minutes)
     congestions = download_congestions(CONGESTIONS_URL)
