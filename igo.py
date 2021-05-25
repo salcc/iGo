@@ -270,7 +270,7 @@ def bearing_itime(igraph, predecessor, node, successor):
 
 def build_igraph_with_bearings(igraph):
     igraph_with_bearings = networkx.DiGraph()
-    igraph_with_bearings.graph["crs"] = igraph.graph["crs"]
+    # igraph_with_bearings.graph["crs"] = igraph.graph["crs"]
     for node, node_data in igraph.nodes(data=True):
         in_nodes, out_nodes = [], []
         for predecessor in igraph.predecessors(node):
@@ -427,7 +427,7 @@ def test():
         highways = download_highways(HIGHWAYS_URL)
         print("We've downloaded them!")
         highway_paths = build_highway_paths(graph, highways)
-        save_data(highways, HIGHWAYS_FILENAME)
+        save_data(highway_paths, HIGHWAYS_FILENAME)
         print("Processing finished!")
 
     # plot the highways into a PNG image
