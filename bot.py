@@ -205,14 +205,17 @@ if __name__ == "__main__":
     CONGESTIONS_URL = "https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/" \
                       "2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download"
 
+    # Build the dictionaries used for the bot message translations.
     build_translation_dictionaries()
 
+    # Load the default graph, or build it if it does not exist (and save it for later).
     if igo.file_exists(DEFAULT_GRAPH_FILENAME):
         graph = igo.load_data(DEFAULT_GRAPH_FILENAME)
     else:
         graph = igo.build_default_graph(PLACE)
         igo.save_data(graph, DEFAULT_GRAPH_FILENAME)
 
+    # Load the highway paths, or build them if they do not exist (and save them for later).
     if igo.file_exists(HIGHWAYS_FILENAME):
         highway_paths = igo.load_data(HIGHWAYS_FILENAME)
     else:
@@ -220,22 +223,24 @@ if __name__ == "__main__":
         highway_paths = igo.build_highway_paths(graph, highways)
         igo.save_data(highways, HIGHWAYS_FILENAME)
 
-    # Read the bot acces token from the file 'token.txt'
-    with open("token.txt","r") as file:
-        TOKEN = file.read().strip()
-
+    # Load the static igraph, or build it if it does not exist (and save it for later).
     if igo.file_exists(STATIC_IGRAPH_FILENAME):
         igraph = igo.load_data(STATIC_IGRAPH_FILENAME)
     else:
         igraph = igo.build_static_igraph(graph, highway_paths)
         igo.save_data(highway_paths, HIGHWAYS_FILENAME)
 
-    # Create the Updater and pass it the bot token
+    # Read the bot acces token from the file 'token.txt'.
+    with open("token.txt", "r") as file:
+        TOKEN = file.read().strip()
+
+    # Create the Updater and pass it the bot token.
     updater = Updater(token=TOKEN, use_context=True)
 
-    # Get the dispatcher to register handlers
+    # Get the dispatcher to register handlers.
     dispatcher = updater.dispatcher
 
+    # Add handlers for all the bot commands
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("go", go))
     dispatcher.add_handler(CommandHandler("where", where))
@@ -244,10 +249,13 @@ if __name__ == "__main__":
     dispatcher.add_handler(CommandHandler("author", author))
     dispatcher.add_handler(CommandHandler("setlang", setlang))
 
+    # Add the handler used for the inline reply keyboards.
     dispatcher.add_handler(CallbackQueryHandler(query_handler))
+
+    # Add the handler used for when a real user location is sent to the bot.
     dispatcher.add_handler(MessageHandler(Filters.location, location_handler))
 
-    # Start the Bot
+    # Start the bot.
     updater.start_polling()
     print("Bot running.")
 
