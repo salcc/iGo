@@ -240,7 +240,7 @@ if __name__ == "__main__":
     # Get the dispatcher to register handlers.
     dispatcher = updater.dispatcher
 
-    # Add handlers for all the bot commands
+    # Add handlers for all the bot commands.
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("go", go))
     dispatcher.add_handler(CommandHandler("where", where))
