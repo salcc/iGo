@@ -116,6 +116,16 @@ def build_default_graph(place):
 
 
 def download_highways(highways_url):
+    """Downloads a file from the specified 'highways_url', which contains information about some of
+    the main street sections of Barcelona. 
+    
+    Each line represents a highway specified with its id which is an integer not bigger than 535,
+    its name or description and a list of pairs of longitude-latitude coordinates, all this 
+    separated by commas. These coordinates are the points that would define the highway in a map.
+
+    This information is stored and returned as a dictionary with the id's as keys and Highways as 
+    values.
+    """
     with urllib.request.urlopen(highways_url) as response:
         lines = [line.decode("utf-8") for line in response.readlines()]
         reader = csv.reader(lines, delimiter=",", quotechar="\"")
@@ -123,16 +133,27 @@ def download_highways(highways_url):
         highways = {}
         for line in reader:
             way_id, description, coordinates_str = line
-            way_id = int(way_id)
+            way_id = int(way_id) # id's are originally strings
             all_coordinate_list = list(map(float, coordinates_str.split(",")))
             coordinates_list = []
-            for i in range(0, len(all_coordinate_list), 2):
+            for i in range(0, len(all_coordinate_list), 2): # saves pairs of lon-lat coordinates
                 coordinates_list.append(Coordinates(all_coordinate_list[i], all_coordinate_list[i + 1]))
             highways[way_id] = Highway(description, coordinates_list)
         return highways
 
 
 def download_congestions(congestions_url):
+    """Downloads a file from the specified 'congestions_url', which contains information about the 
+    current traffic in some of the main street sections of Barcelona. 
+
+    Each line represents a highway specified with its id, the date in format YYYYMMDD and time in 
+    HHMMSS of the last update, the current confestion and the one that is expected in 15 minutes, 
+    all separated by #. The states are coded with integers from 0 to 6, with the following meanings:
+    no data (0), very fluid (1), fluid (2), dense (3), very dense (4), congestioned (5), closed (6).
+    
+    This information is updated every 5 minutes and it is stored and returned as a dictionary with 
+    the id's as keys and Congestion's as values.
+    """
     with urllib.request.urlopen(congestions_url) as response:
         lines = [line.decode("utf-8") for line in response.readlines()]
         reader = csv.reader(lines, delimiter="#", quotechar="\"")
@@ -144,6 +165,22 @@ def download_congestions(congestions_url):
 
 
 def set_default_itime(graph):
+    """Sets the default 'itime' edge attribute for every edge in the specified graph. This attribute 
+    represents how much time is needed in seconds to go across an edge, which in this case is a 
+    section of the public road of Barcelona. The length and the maximum allowed speed of the section
+    are the only things taken into account to compute this value.
+
+    The edge attribute 'maxspeed' is the maximum allowed speed for a vehicle driving in the section
+    of road that the edge represents and it is given in km/h. 
+    
+    If an edge does not have a maximum speed, it is assumed by default that it is 30km/h based on 
+    the 'City 30' initiative that Barcelona is following, which makes it have more than 50% of its 
+    streets with a 30km/h restriction and a prediction for 2021 for this being a 75%. 
+    (https://www.barcelona.cat/mobilitat/ca/barcelona-ciutat-30)
+
+    If an edge has more than one maxspeed, it is assumed that the final one is its mean. In order to 
+    have the 'itime' in seconds, this attribute is converted to m/s for all the edges in the graph.
+    """
     for node1, node2, edge_data in graph.edges(data=True):
         if "maxspeed" in edge_data:
             if type(edge_data["maxspeed"]) is list:
@@ -154,7 +191,7 @@ def set_default_itime(graph):
         else:
             edge_data["maxspeed"] = 30  # https://www.barcelona.cat/mobilitat/ca/barcelona-ciutat-30
 
-        edge_data["maxspeed"] *= 1000 / 3600
+        edge_data["maxspeed"] *= 1000 / 3600 # conversion from km/h to m/s
         graph[node1][node2]["itime"] = edge_data["length"] / edge_data["maxspeed"]
 
 
