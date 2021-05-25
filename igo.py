@@ -115,7 +115,7 @@ def build_default_graph(place):
     graph.remove_edges_from(networkx.selfloop_edges(graph))
     graph = osmnx.bearing.add_edge_bearings(graph)
     graph = osmnx.utils_graph.get_digraph(graph, weight="length")
-    graph.subgraph(max(networkx.strongly_connected_components(graph), key=len))
+    graph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
     return graph
 
 
