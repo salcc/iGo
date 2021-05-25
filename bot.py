@@ -61,7 +61,7 @@ def go(update, context):
     destination = update.message.text[4:].strip()
     destination_coordinates = get_coordinates(context, update, destination, PLACE)
     if destination_coordinates:
-        context.user_data["destination"] = igo.coordinates_to_node(graph, destination_coordinates)
+        context.user_data["destination"] = destination_coordinates
         context.bot.send_message(chat_id=update.effective_chat.id,
                                  text="Oooh! 😃 " + message("So you want to go to ", lang) + destination + ".")
         location_keyboards(update, context)
@@ -106,8 +106,8 @@ def plot_path(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=message("Oh, you are already here!", lang) + " 🥳")
     else:
         congestions = igo.download_congestions(CONGESTIONS_URL)
-        igraph = igo.build_igraph(graph, highways, congestions)
-        ipath = igo.get_ipath(igraph, source, destination)
+        dynamic_igraph = igo.build_dynamic_igraph(igraph, highway_paths, congestions)
+        ipath = igo.get_ipath(dynamic_igraph, source, destination)
         if ipath:
             path_plot = igo.get_path_plot(ipath, SIZE)
             filename = "ipath-{}-{}.png".format(source, destination)
@@ -137,7 +137,7 @@ def location_handler(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text=message("Processing...", lang) + " ⏳",
                              reply_markup=ReplyKeyboardRemove())
     if igo.is_in_place(coordinates, PLACE):
-        context.user_data["location"] = igo.coordinates_to_node(graph, coordinates)
+        context.user_data["location"] = coordinates
         if context.user_data["function"] == "go":
             plot_path(update, context)
         elif context.user_data["function"] == "where":
@@ -154,7 +154,7 @@ def pos(update, context):
     location = update.message.text[5:].strip()
     coordinates = get_coordinates(context, update, location, PLACE)
     if coordinates:
-        context.user_data["location"] = igo.coordinates_to_node(graph, coordinates)
+        context.user_data["location"] = coordinates
         context.bot.send_message(chat_id=update.effective_chat.id, text=message("Your location has been updated.", lang) + "✅")
 
 
@@ -196,7 +196,8 @@ def setlang(update, context):
 
 if __name__ == "__main__":
     PLACE = "Barcelona, Barcelonés, Barcelona, Catalonia"
-    GRAPH_FILENAME = "graph.dat"
+    DEFAULT_GRAPH_FILENAME = "graph.dat"
+    STATIC_IGRAPH_FILENAME = "igraph.dat"
     HIGHWAYS_FILENAME = "highways.dat"
     SIZE = 1200
     HIGHWAYS_URL = "https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/" \
@@ -206,23 +207,28 @@ if __name__ == "__main__":
 
     build_translation_dictionaries()
 
-    if not igo.file_exists(GRAPH_FILENAME):
-        graph = igo.download_graph(PLACE)
-        graph = igo.build_graph(graph)
-        igo.save_data(graph, GRAPH_FILENAME)
+    if igo.file_exists(DEFAULT_GRAPH_FILENAME):
+        graph = igo.load_data(DEFAULT_GRAPH_FILENAME)
     else:
-        graph = igo.load_data(GRAPH_FILENAME)
+        graph = igo.build_default_graph(PLACE)
+        igo.save_data(graph, DEFAULT_GRAPH_FILENAME)
 
-    if not igo.file_exists(HIGHWAYS_FILENAME):
-        highways = igo.download_highways(HIGHWAYS_URL)
-        highways = igo.get_highway_paths(graph, highways)
-        igo.save_data(highways, HIGHWAYS_FILENAME)
+    if igo.file_exists(HIGHWAYS_FILENAME):
+        highway_paths = igo.load_data(HIGHWAYS_FILENAME)
     else:
-        highways = igo.load_data(HIGHWAYS_FILENAME)
+        highways = igo.download_highways(HIGHWAYS_URL)
+        highway_paths = igo.build_highway_paths(graph, highways)
+        igo.save_data(highways, HIGHWAYS_FILENAME)
 
     # Read the bot acces token from the file 'token.txt'
     with open("token.txt","r") as file:
         TOKEN = file.read().strip()
+
+    if igo.file_exists(STATIC_IGRAPH_FILENAME):
+        igraph = igo.load_data(STATIC_IGRAPH_FILENAME)
+    else:
+        igraph = igo.build_static_igraph(graph, highway_paths)
+        igo.save_data(highway_paths, HIGHWAYS_FILENAME)
 
     # Create the Updater and pass it the bot token
     updater = Updater(token=TOKEN, use_context=True)

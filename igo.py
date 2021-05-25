@@ -106,11 +106,12 @@ def nodes_to_coordinates_list(graph, node_list):
     return [node_to_coordinates(graph, node) for node in node_list]
 
 
-def download_graph(place):
+def build_default_graph(place):
     graph = osmnx.graph_from_place(place, network_type="drive", simplify=True)
     graph.remove_edges_from(networkx.selfloop_edges(graph))
     graph = osmnx.bearing.add_edge_bearings(graph)
     graph = osmnx.utils_graph.get_digraph(graph, weight="length")
+    graph.subgraph(max(networkx.strongly_connected_components(graph), key=len))
     return graph
 
 
@@ -157,13 +158,7 @@ def set_default_itime(graph):
         graph[node1][node2]["itime"] = edge_data["length"] / edge_data["maxspeed"]
 
 
-def build_graph(graph):
-    default_graph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
-    set_default_itime(default_graph)
-    return default_graph
-
-
-def get_highway_paths(graph, highways):
+def build_highway_paths(graph, highways):
     highway_paths = {}
     for way_id, highway in highways.items():
         highway_paths[way_id] = []
@@ -180,26 +175,27 @@ def congestion_function(congestion_state):
     return math.exp((congestion_state - 1) ** 2 / 7.5)
 
 
-def build_igraph_with_congestions(graph, highway_paths, congestions):
-    igraph = graph.copy()
+def build_dynamic_igraph(igraph, highway_paths, congestions):
+    igraph = igraph.copy()
     for way_id, highway_path in highway_paths.items():
         congestion_state = congestions[way_id].current_state
         for i in range(len(highway_path) - 1):
-            if "congestions" not in igraph[highway_path[i]][highway_path[i + 1]]:
-                igraph[highway_path[i]][highway_path[i + 1]]["congestions"] = [congestion_state]
+            node1 = "O_" + str(highway_path[i]) + "_" + str(highway_path[i + 1])
+            node2 = "I_" + str(highway_path[i + 1]) + "_" + str(highway_path[i])
+            if "congestions" not in igraph[node1][node2]:
+                igraph[node1][node2]["congestions"] = [congestion_state]
             else:
                 if congestion_state == 0:
                     congestion_state = 1
-                igraph[highway_path[i]][highway_path[i + 1]]["congestions"].append(congestion_state)
+                igraph[node1][node2]["congestions"].append(congestion_state)
     
-    for node1, node2, edge_data in igraph.edges(data=True):
+    for node1, node2 in igraph.edges():
         if "congestions" in igraph[node1][node2]:
             edge_congestions = igraph[node1][node2]["congestions"]
             if 6 in edge_congestions:
                 igraph[node1][node2]["itime"] = float("inf")
             else:
                 igraph[node1][node2]["itime"] *= congestion_function(statistics.mean(edge_congestions))
-            
     return igraph
 
 
@@ -268,10 +264,9 @@ def build_igraph_with_bearings(igraph):
     return igraph_with_bearings
 
 
-def build_igraph(graph, highway_paths, congestions):
-    igraph = build_igraph_with_congestions(graph, highway_paths, congestions)
-    igraph = build_igraph_with_bearings(igraph)
-    return igraph
+def build_static_igraph(graph):
+    set_default_itime(graph)
+    return build_igraph_with_bearings(graph)
 
 
 def get_ipath(igraph, source, destination):
@@ -365,7 +360,8 @@ def save_map_as_image(map, output_filename):
 
 def test():
     PLACE = "Barcelona, Barcelonés, Barcelona, Catalonia"
-    GRAPH_FILENAME = "graph.dat"
+    DEFAULT_GRAPH_FILENAME = "graph.dat"
+    STATIC_IGRAPH_FILENAME = "igraph.dat"
     HIGHWAYS_FILENAME = "highways.dat"
     SIZE = 1200
     HIGHWAYS_URL = "https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/" \
@@ -374,41 +370,48 @@ def test():
                       "2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download"
 
     # load the graph, or download and set times it if it does not exist
-    if file_exists(GRAPH_FILENAME):
-        graph = load_data(GRAPH_FILENAME)
+    if file_exists(DEFAULT_GRAPH_FILENAME):
+        graph = load_data(DEFAULT_GRAPH_FILENAME)
         print("We found a wild graph!! :D")
     else:
         print("There is no graph :(")
-        graph = download_graph(PLACE)
+        graph = build_default_graph(PLACE)
         print("We've downloaded it!")
-        graph = build_graph(graph)
-        save_data(graph, GRAPH_FILENAME)
+        save_data(graph, DEFAULT_GRAPH_FILENAME)
         print("And we've built it! :)")
 
     # load the highways, or download them and translate them to node paths if they do not exist
     if file_exists(HIGHWAYS_FILENAME):
         print("We have the highways!! :D")
-        highways = load_data(HIGHWAYS_FILENAME)
+        highway_paths = load_data(HIGHWAYS_FILENAME)
     else:
         print("The highways haven't been found :(")
         highways = download_highways(HIGHWAYS_URL)
         print("We've downloaded them!")
-        highways = get_highway_paths(graph, highways)
+        highway_paths = build_highway_paths(graph, highways)
         save_data(highways, HIGHWAYS_FILENAME)
         print("Processing finished!")
+
     # plot the highways into a PNG image
-    save_map_as_image(get_highways_plot(graph, highways, SIZE), "highways.png")
+    save_map_as_image(get_highways_plot(graph, highway_paths, SIZE), "highways.png")
     print("Highways have been plotted into a precious map :)")
+
+    if file_exists(STATIC_IGRAPH_FILENAME):
+        igraph = load_data(STATIC_IGRAPH_FILENAME)
+    else:
+        igraph = build_static_igraph(graph)
+        save_data(igraph, STATIC_IGRAPH_FILENAME)
+
 
     # download congestions (we download them every time because they are updated every 5 minutes)
     congestions = download_congestions(CONGESTIONS_URL)
     # plot the congestions into a PNG image
-    save_map_as_image(get_congestions_plot(graph, highways, congestions, SIZE), "congestions.png")
+    save_map_as_image(get_congestions_plot(graph, highway_paths, congestions, SIZE), "congestions.png")
     print("Congestions downloaded and plotted into a very beautiful image :)")
 
     # get the "intelligent graph" version of the graph (taking into account the congestions of the highways)
-    igraph = build_igraph(graph, highways, congestions)
-    print("The igraph have been built!!! The mean IQ of the planet has increased by 3 points ^-^")
+    igraph = build_dynamic_igraph(igraph, highway_paths, congestions)
+    print("The igraph has been built!!! The mean IQ of the planet has increased by 3 points ^-^")
     # plot the igraph into a PNG image
     save_map_as_image(get_igraph_plot(igraph, SIZE), "igraph.png")
     print("We now have the most intelligent graph ever plotted into a marvelous PNG image UwU")
