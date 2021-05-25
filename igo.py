@@ -40,7 +40,7 @@ def load_data(filename):
 def is_in_place(coordinates, place):
     """Returns True if the coordinates are inside the boundaries of the specified place.
     
-    Precondition: 'place' should be geocodable string by the Nominatim API.
+    Precondition: 'place' should be a geocodable string by the Nominatim API.
     """
     point = shapely.geometry.Point(coordinates.longitude, coordinates.latitude)
     shape = osmnx.geocode_to_gdf(place).loc[0, "geometry"]
@@ -127,7 +127,7 @@ def build_default_graph(place):
     (clockwise) between north and the geodesic line from the origin node to the destination node of
     the edge.
 
-    Precondition: 'place' should be geocodable string by the Nominatim API.
+    Precondition: 'place' should be a geocodable string by the Nominatim API.
     """
     # Download the graph for the drivable roads and simplify it.
     graph = osmnx.graph_from_place(place, network_type="drive", simplify=True)
