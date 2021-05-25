@@ -38,7 +38,10 @@ def load_data(filename):
 
 
 def is_in_place(coordinates, place):
-    """Returns True if the coordinates are in the 'place', which should be specified with a string."""
+    """Returns True if the coordinates are inside the boundaries of the specified place.
+    
+    Precondition: 'place' should be geocodable string by the Nominatim API.
+    """
     point = shapely.geometry.Point(coordinates.longitude, coordinates.latitude)
     shape = osmnx.geocode_to_gdf(place).loc[0, "geometry"]
     return shape.intersects(point)
@@ -109,11 +112,42 @@ def nodes_to_coordinates_list(graph, node_list):
 
 
 def build_default_graph(place):
+    """Downloads and returns the graph built from the drivable roads within the boundaries of the
+    specified place. The data is downloaded from OpenStreetMap.
+    
+    The returned graph is directed, does not have parallel edges nor self-loops edges, and is
+    strongly connected.
+    
+    The nodes are identified by an integer value and have several attributes. The ones importants
+    for iGo are 'x' and 'y', the longitude and latitude of the node.
+
+    The edges have several attributes too. The ones importants for iGo are 'length', the length of
+    the street in meters; 'maxspeed', the maximum speed of the street in km/h (if there is a speed
+    change in that street, it is a list of all the values), and 'bearing', the angle in degrees
+    (clockwise) between north and the geodesic line from the origin node to the destination node of
+    the edge.
+
+    Precondition: 'place' should be geocodable string by the Nominatim API.
+    """
+    # Download the graph for the drivable roads and simplify it.
     graph = osmnx.graph_from_place(place, network_type="drive", simplify=True)
+
+    # Remove self-loop edges, as they should not exist.
     graph.remove_edges_from(networkx.selfloop_edges(graph))
+
+    # Add the 'bearing' attribute to all the edges.
     graph = osmnx.bearing.add_edge_bearings(graph)
+
+    # Removes parallel edges, choosing between them by minimizing its 'length'.
     graph = osmnx.utils_graph.get_digraph(graph, weight="length")
+
+    # The downloaded graph is not strongly connected due to cuts in the boundaries (in the case of
+    # Barcelona, it has more than 200 strongly connected components (SCCs)!) This makes it impossible
+    # to find a path between some nodes (if they are in different SCCs). Fortunetely, all the SCCs are
+    # very small (<10 nodes) except for the main one, which contains most of the nodes. With the
+    # following line, the graph is overwritten to only be this main SCC.
     graph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
+    
     return graph
 
 
@@ -130,14 +164,14 @@ def download_highways(highways_url):
     with urllib.request.urlopen(highways_url) as response:
         lines = [line.decode("utf-8") for line in response.readlines()]
         reader = csv.reader(lines, delimiter=",", quotechar="\"")
-        next(reader)  # ignore first line with description
+        next(reader)  # Ignore first line with description.
         highways = {}
         for line in reader:
             way_id, description, coordinates_str = line
-            way_id = int(way_id) # id's are originally strings
+            way_id = int(way_id)  # id's are originally strings.
             all_coordinate_list = list(map(float, coordinates_str.split(",")))
             coordinates_list = []
-            for i in range(0, len(all_coordinate_list), 2): # saves pairs of lon-lat coordinates
+            for i in range(0, len(all_coordinate_list), 2):  # Saves pairs of lon-lat coordinates.
                 coordinates_list.append(Coordinates(all_coordinate_list[i], all_coordinate_list[i + 1]))
             highways[way_id] = Highway(description, coordinates_list)
         return highways
