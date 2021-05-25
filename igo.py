@@ -10,9 +10,8 @@ import osmnx
 import staticmap
 import networkx
 import shapely.geometry
-import haversine
 
-Coordinates = collections.namedtuple("Coordinates", "latitude longitude")
+Coordinates = collections.namedtuple("Coordinates", "longitude latitude")
 Highway = collections.namedtuple("Highway", "description coordinates_list")
 Congestion = collections.namedtuple("Congestion", "datetime current_state planned_state")
 
@@ -55,38 +54,45 @@ def name_to_coordinates(name, place):
         lat, lng = float(lat), float(lng)
     else:
         lat, lng = osmnx.geocoder.geocode(name + ", " + place)
-    coordinates = Coordinates(lat, lng)
+    coordinates = Coordinates(lng, lat)
     if not is_in_place(coordinates, place):
         raise Exception
     return coordinates
 
 
+def haversine(coordinates1, coordinates2):
+  lng1, lat1 = math.radians(coordinates1.longitude), math.radians(coordinates1.latitude)
+  lng2, lat2 = math.radians(coordinates2.longitude), math.radians(coordinates2.latitude)
+  return (2 * 6371008.8 * math.asin(math.sqrt(
+    math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) *
+    math.sin((lng2 - lng1) / 2) ** 2)))
+
+
 def coordinates_to_node(graph, coordinates):
     """Returns the node in the 'graph' that is closest to the given 'coordinates'.
     
-    Preconditon: All the nodes of the graph should have two attributes 'x' and 'y', which indicate
-    its latitude and longitude, respectively.
+    Preconditon: All the nodes of the graph should have two attributes 'y' and 'x', which indicate
+    its latitude and longitude, respectively.  # TODO
     
     Note: If several nodes are at the same distance, only one of them is returned.
     """
     nearest_node = None
     nearest_distance = float("inf")
 
-    for node, node_data in graph.nodes(data=True):
-        distance = haversine.haversine((node_data["x"], node_data["y"]), coordinates)
+    for node in graph.nodes():
+        distance = haversine(node_to_coordinates(graph, node), coordinates)
         if distance < nearest_distance:
             nearest_distance = distance
             nearest_node = node
     
     return nearest_node
-    # return osmnx.distance.nearest_nodes(graph, coordinates.longitude, coordinates.latitude)
 
 
 def node_to_coordinates(graph, node_id):
     """Returns the coordinates of the node of the 'graph' identified by 'node_id'.
     
-    Precondition: The node should have two attributes 'x' and 'y', which indicate its latitude
-    and longitude, respectively.
+    Precondition: The node should have two attributes 'y' and 'x', which indicate its latitude
+    and longitude, respectively. # TODO
     """
     return Coordinates(graph.nodes[node_id]["x"], graph.nodes[node_id]["y"])
 
@@ -94,8 +100,8 @@ def node_to_coordinates(graph, node_id):
 def nodes_to_coordinates_list(graph, node_list):
     """Returns a list of Coordinates given the list of nodes 'node_list' of the 'graph'.
     
-    Precondition: The nodes should have two attributes 'x' and 'y', which indicate their latitude
-    and longitude, respectively.
+    Precondition: The nodes should have two attributes 'y' and 'x', which indicate their latitude
+    and longitude, respectively. # TODO
     """
     return [node_to_coordinates(graph, node) for node in node_list]
 
@@ -120,7 +126,7 @@ def download_highways(highways_url):
             all_coordinate_list = list(map(float, coordinates_str.split(",")))
             coordinates_list = []
             for i in range(0, len(all_coordinate_list), 2):
-                coordinates_list.append(Coordinates(all_coordinate_list[i + 1], all_coordinate_list[i]))
+                coordinates_list.append(Coordinates(all_coordinate_list[i], all_coordinate_list[i + 1]))
             highways[way_id] = Highway(description, coordinates_list)
         return highways
 
@@ -162,10 +168,8 @@ def get_highway_paths(graph, highways):
     for way_id, highway in highways.items():
         highway_paths[way_id] = []
         for i in range(len(highway.coordinates_list) - 1):
-            coordinates1 = Coordinates(highway.coordinates_list[i].latitude, highway.coordinates_list[i].longitude)
-            node1 = coordinates_to_node(graph, coordinates1)
-            coordinates2 = Coordinates(highway.coordinates_list[i + 1].latitude, highway.coordinates_list[i + 1].longitude)
-            node2 = coordinates_to_node(graph, coordinates2)
+            node1 = coordinates_to_node(graph, highway.coordinates_list[i])
+            node2 = coordinates_to_node(graph, highway.coordinates_list[i + 1])
             if i > 0:
                 highway_paths[way_id].pop()  # we do this to avoid repeated nodes in the path
             highway_paths[way_id].extend(osmnx.distance.shortest_path(graph, node1, node2, weight="length"))
@@ -238,21 +242,21 @@ def build_igraph_with_bearings(igraph):
         for predecessor in igraph.predecessors(node):
             # I_3_2: vèrtex de 3, entrant des de 2 (in)
             id = "I_" + str(node) + "_" + str(predecessor)
-            igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
+            igraph_with_bearings.add_node(id, y=node_data["y"], x=node_data["x"], metanode=node)
             in_nodes.append((id, predecessor))
         for successor in igraph.successors(node):
             # O_0_1, vèrtex de 0, sortint cap a 1  (out)
             id = "O_" + str(node) + "_" + str(successor)
-            igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
+            igraph_with_bearings.add_node(id, y=node_data["y"], x=node_data["x"], metanode=node)
             out_nodes.append((id, successor))
         for in_node, predecessor in in_nodes:
             for out_node, successor in out_nodes:
                 igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, predecessor, node, successor))
 
-        igraph_with_bearings.add_node("S_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
+        igraph_with_bearings.add_node("S_" + str(node), y=node_data["y"], x=node_data["x"], metanode=node)
         for in_node, predecessor in in_nodes:
             igraph_with_bearings.add_edge("S_" + str(node), in_node, itime=0)
-        igraph_with_bearings.add_node("D_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
+        igraph_with_bearings.add_node("D_" + str(node), y=node_data["y"], x=node_data["x"], metanode=node)
         for out_node, successor in out_nodes:
             igraph_with_bearings.add_edge(out_node, "D_" + str(node), itime=0)
 

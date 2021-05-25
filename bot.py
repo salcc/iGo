@@ -133,7 +133,7 @@ def plot_location(update, context):
 def location_handler(update, context):
     lang = get_language(update, context)
 
-    coordinates = igo.Coordinates(update.message.location.latitude, update.message.location.longitude)
+    coordinates = igo.Coordinates(update.message.location.longitude, update.message.location.latitude)
     context.bot.send_message(chat_id=update.effective_chat.id, text=message("Processing...", lang) + " ⏳",
                              reply_markup=ReplyKeyboardRemove())
     if igo.is_in_place(coordinates, PLACE):
