@@ -154,7 +154,7 @@ def pos(update, context):
     coordinates = get_coordinates(context, update, location, PLACE)
     if coordinates:
         context.user_data["location"] = coordinates
-        context.bot.send_message(chat_id=update.effective_chat.id, text=message("Your location has been updated.", lang) + "✅")
+        context.bot.send_message(chat_id=update.effective_chat.id, text=message("Your location has been updated.", lang) + " ✅")
 
 
 def help(update, context):
