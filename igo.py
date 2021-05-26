@@ -512,7 +512,7 @@ def _test():
     # Get the "intelligent path" between two addresses.
     source = "Trinitat Nova"
     destination = "Port Vell"
-    ipath = get_ipath(name_to_coordinates(source, PLACE), name_to_coordinates(destination, PLACE), destination)
+    ipath = get_ipath(igraph, name_to_coordinates(source, PLACE), name_to_coordinates(destination, PLACE))
 
     # Plot the path into a PNG image.
     save_map_as_image(get_path_plot(ipath, SIZE), "ipath.png")
