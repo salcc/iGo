@@ -354,6 +354,10 @@ def get_ipath(igraph, source, destination):
 
 
 def get_highways_plot(graph, highway_paths, size):
+    """Returns a StaticMap with the specified size with the highways plotted.
+    
+    'highway_paths' should be a dictionary from way_id to a list of nodes of the graph.
+    """
     map = staticmap.StaticMap(size, size)
     for way_id, path in highway_paths.items():
         highway_line = staticmap.Line(nodes_to_coordinates_list(graph, path), "black", 2)
