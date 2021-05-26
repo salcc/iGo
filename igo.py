@@ -118,10 +118,10 @@ def build_default_graph(place):
     The returned graph is directed, does not have parallel edges nor self-loops edges, and is
     strongly connected.
     
-    The nodes are identified by an integer value and have several attributes. The ones importants
-    for iGo are 'x' and 'y', the longitude and latitude of the node.
+    The nodes are identified by an integer value and have several attributes. The important ones
+    for iGo are 'x' and 'y', the longitude and latitude of the node respectively.
 
-    The edges have several attributes too. The ones importants for iGo are 'length', the length of
+    The edges have several attributes too. The important ones for iGo are 'length', the length of
     the street in meters; 'maxspeed', the maximum speed of the street in km/h (if there is a speed
     change in that street, it is a list of all the values), and 'bearing', the angle in degrees
     (clockwise) between north and the geodesic line from the origin node to the destination node of
@@ -138,14 +138,14 @@ def build_default_graph(place):
     # Add the 'bearing' attribute to all the edges.
     graph = osmnx.bearing.add_edge_bearings(graph)
 
-    # Removes parallel edges, choosing between them by minimizing its 'length'.
+    # Remove parallel edges, choosing between them by minimizing its 'length'.
     graph = osmnx.utils_graph.get_digraph(graph, weight="length")
 
     # The downloaded graph is not strongly connected due to cuts in the boundaries (in the case of
-    # Barcelona, it has more than 200 strongly connected components (SCCs)!) This makes it impossible
-    # to find a path between some nodes (if they are in different SCCs). Fortunetely, all the SCCs are
-    # very small (<10 nodes) except for the main one, which contains most of the nodes. With the
-    # following line, the graph is overwritten to only be this main SCC.
+    # Barcelona, it has more than 200 strongly connected components (SCCs)!) This makes it 
+    # impossible to find a path between some nodes (if they are in different SCCs). Fortunately, 
+    # all the SCCs are very small (<10 nodes) except for the main one (>8000 nodes), which contains 
+    # most of the nodes. With the following line, the graph is overwritten to only be this main SCC.
     graph = graph.subgraph(max(networkx.strongly_connected_components(graph), key=len)).copy()
     
     return graph
@@ -452,6 +452,7 @@ def test():
         save_data(graph, DEFAULT_GRAPH_FILENAME)
         print("And we've built it! :)")
 
+    print(graph.number_of_nodes())
     # load the highways, or download them and translate them to node paths if they do not exist
     if file_exists(HIGHWAYS_FILENAME):
         print("We have the highways!! :D")
