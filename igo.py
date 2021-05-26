@@ -244,10 +244,26 @@ def build_highway_paths(graph, highways):
 
 
 def congestion_function(congestion_state):
+    """Returns the value that represents the factor that is applied to the needed time to drive 
+    across a road taking into account the traffic congestions. This value is the evaluation of the
+    congestion_state in the following function: https://www.geogebra.org/calculator/sy4cy7zy. 
+    
+    The congestion_state should be an integer number from 1 to 5.
+
+    Table of values of the congestion_function:
+    |   1   |    2   |    3   |    4   |   5   |
+    |   1   |  1.14  |  1.70  |  3.32  |  8.44 |
+    """
     return math.exp((congestion_state - 1) ** 2 / 7.5)
 
 
 def build_dynamic_igraph(igraph, highway_paths, congestions):
+    """Returns a new graph built from the specified igraph but with modified 'itime' edge attributes
+    that now take into account the current traffic data available, which is given by the congestions
+    and the hiwghway_paths. 
+    The specified 'congestions' must be a dictionary from id's to Congestion, and the highway_paths
+    one from id's to the list of nodes #TODO
+    """
     igraph = igraph.copy()
     for way_id, highway_path in highway_paths.items():
         congestion_state = congestions[way_id].current_state
