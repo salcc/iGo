@@ -123,7 +123,6 @@ def plot_path(update, context):
 def plot_location(update, context):
     location = context.user_data["location"]
     filename = "location-{}.png".format(location)
-    location = igo.node_to_coordinates(graph, location)
     location_plot = igo.get_location_plot(location, SIZE)
     igo.save_map_as_image(location_plot, filename)
     context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, "rb"))
