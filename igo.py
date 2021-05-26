@@ -155,11 +155,11 @@ def download_highways(highways_url):
     """Downloads a file from the specified 'highways_url', which contains information about some of
     the main street sections of Barcelona. 
     
-    Each line represents a highway specified with an id which is an integer, its name or
+    Each line represents a highway specified with an ID which is an integer, its name or
     description and a list of pairs of longitude-latitude coordinates, all this separated by commas.
     These coordinates are the points that would define the highway in a map.
 
-    This information is stored and returned as a dictionary from id's to Highway.
+    This information is stored and returned as a dictionary from way ID to Highway.
     """
     with urllib.request.urlopen(highways_url) as response:
         lines = [line.decode("utf-8") for line in response.readlines()]
@@ -168,7 +168,7 @@ def download_highways(highways_url):
         highways = {}
         for line in reader:
             way_id, description, coordinates_str = line
-            way_id = int(way_id)  # id's are originally strings.
+            way_id = int(way_id)  # Way IDs are originally read as strings.
             all_coordinate_list = list(map(float, coordinates_str.split(",")))
             coordinates_list = []
             for i in range(0, len(all_coordinate_list), 2):  # Saves pairs of lon-lat coordinates.
@@ -178,6 +178,11 @@ def download_highways(highways_url):
 
 
 def build_highway_paths(graph, highways):
+    """Returns a dictionary from way ID to list of nodes of the graph. Each list of nodes represent
+    the respective highway from the parameter 'highways', which should be a dictionary from way ID
+    to Highway. This function is useful to translate the highways from lists of coordinates to lists
+    of nodes.
+    """
     highway_paths = {}
     for way_id, highway in highways.items():
         highway_paths[way_id] = []
@@ -185,7 +190,7 @@ def build_highway_paths(graph, highways):
             node1 = coordinates_to_node(graph, highway.coordinates_list[i])
             node2 = coordinates_to_node(graph, highway.coordinates_list[i + 1])
             if i > 0:
-                highway_paths[way_id].pop()  # we do this to avoid repeated nodes in the path
+                highway_paths[way_id].pop()  # Avoid repeated nodes from concatenatig paths.
             highway_paths[way_id].extend(osmnx.distance.shortest_path(graph, node1, node2, weight="length"))
     return highway_paths
 
@@ -210,14 +215,14 @@ def set_default_itime(graph):
     for node1, node2, edge_data in graph.edges(data=True):
         if "maxspeed" in edge_data:
             if type(edge_data["maxspeed"]) is not list:
-                edge_data["maxspeed"] = float(edge_data["maxspeed"])  # 'maxspeed' is originally a string
-            else:  # for the edges that have more than one 'maxspeed'
+                edge_data["maxspeed"] = float(edge_data["maxspeed"])  # 'maxspeed' is originally a string.
+            else:  # For the edges that have more than one 'maxspeed'.
                 maxspeeds = [float(maxspeed) for maxspeed in edge_data["maxspeed"]]
                 edge_data["maxspeed"] = statistics.mean(maxspeeds)
         else:
             edge_data["maxspeed"] = 30
 
-        edge_data["maxspeed"] *= 1000 / 3600  # conversion from km/h to m/s
+        edge_data["maxspeed"] *= 1000 / 3600  # Conversion from km/h to m/s.
         graph[node1][node2]["itime"] = edge_data["length"] / edge_data["maxspeed"]
 
 
@@ -312,13 +317,13 @@ def download_congestions(congestions_url):
     """Downloads a file from the specified 'congestions_url', which contains information about the 
     current traffic in some of the main street sections of Barcelona.
 
-    Each line represents a highway specified with its id, the date in format YYYYMMDD and time in 
+    Each line represents a highway specified with its ID, the date in format YYYYMMDD and time in 
     HHMMSS of the last update, the current congestion and the one that is expected in 15 minutes, 
     all separated by #. The states are coded with integers from 0 to 6, with the following meanings:
     no data (0), very fluid (1), fluid (2), dense (3), very dense (4), congestioned (5), closed (6).
     
     This information is updated every 5 minutes and it is stored and returned as a dictionary from
-    id's to Congestion.
+    way ID to Congestion.
     """
     with urllib.request.urlopen(congestions_url) as response:
         lines = [line.decode("utf-8") for line in response.readlines()]
@@ -347,9 +352,10 @@ def congestion_function(congestion_state):
 def build_dynamic_igraph(igraph, highway_paths, congestions):
     """Returns a new graph built from the specified igraph but with modified 'itime' edge attributes
     that now take into account the current traffic data available, which is given by the congestions
-    and the hiwghway_paths. 
-    The specified 'congestions' must be a dictionary from id's to Congestion, and the highway_paths
-    one from id's to the list of nodes #TODO
+    and the hiwghway paths.
+
+    'congestions' must be a dictionary from way ID to Congestion, and the 'highway_paths' one from
+    way ID to list of nodes # TODO
     """
     igraph = igraph.copy()
     for way_id, highway_path in highway_paths.items():
@@ -389,7 +395,7 @@ def get_ipath(igraph, source, destination):
 def get_highways_plot(graph, highway_paths, size):
     """Returns a StaticMap with the specified size with the highways plotted.
     
-    'highway_paths' should be a dictionary from way_id to a list of nodes of the graph.
+    'highway_paths' should be a dictionary from way IDs to a list of nodes of the graph.
     """
     map = staticmap.StaticMap(size, size)
     for way_id, path in highway_paths.items():
@@ -510,7 +516,7 @@ def _test():
         save_data(igraph, STATIC_IGRAPH_FILENAME)
     print("Static igraph loaded!")
 
-    # Download congestions (they are downloaded every time because they are updated every 5 minutes)
+    # Download congestions (they are downloaded every time because they are updated every 5 minutes).
     congestions = download_congestions(CONGESTIONS_URL)
 
     # Plot the congestions into a PNG image.
@@ -518,7 +524,7 @@ def _test():
 
     print("Congestion data downloaded and plotted!")
 
-    # Get the dynamic version of the igraph (taking into account the congestions of the highways)
+    # Get the dynamic version of the igraph (taking into account the congestions of the highways).
     igraph = build_dynamic_igraph(igraph, highway_paths, congestions)
 
     # Plot the igraph into a PNG image.
@@ -529,7 +535,7 @@ def _test():
     # Get the "intelligent path" between two addresses.
     source = "Trinitat Nova"
     destination = "Port Vell"
-    ipath = get_ipath(name_to_coordinates(source, PLACE), name_to_coordinates(destination, PLACE), destination)
+    ipath = get_ipath(igraph, name_to_coordinates(source, PLACE), name_to_coordinates(destination, PLACE))
 
     # Plot the path into a PNG image.
     save_map_as_image(get_path_plot(ipath, SIZE), "ipath.png")
