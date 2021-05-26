@@ -369,17 +369,21 @@ def get_ipath(igraph, source, destination):
     return [node_to_coordinates(igraph, id) for id in ipath]
 
 
-def get_highways_plot(graph, highways, size):
+def get_highways_plot(graph, highway_paths, size):
+    """Returns a StaticMap with the specified size with the highways plotted.
+    
+    'highway_paths' should be a dictionary from way_id to a list of nodes of the graph.
+    """
     map = staticmap.StaticMap(size, size)
-    for way_id, path in highways.items():
-        highway_line = staticmap.Line(nodes_to_coordinates_list(graph, path), "red", 2)
+    for way_id, path in highway_paths.items():
+        highway_line = staticmap.Line(nodes_to_coordinates_list(graph, path), "black", 2)
         map.add_line(highway_line)
     return map
 
 
-def get_congestions_plot(graph, highways, congestions, size):
+def get_congestions_plot(graph, highway_paths, congestions, size):
     map = staticmap.StaticMap(size, size)
-    for way_id, path in highways.items():
+    for way_id, path in highway_paths.items():
         congestion_state = congestions[way_id].current_state
         congestion_colors = ["#a9a9a9", "#228b22", "#7cfc00", "#ffa500", "#ff4500", "#bb0202", "#510101"]
         congestion_line = staticmap.Line(nodes_to_coordinates_list(graph, path), congestion_colors[congestion_state], 2)
@@ -446,7 +450,10 @@ def save_map_as_image(map, output_filename):
     map_image.save(output_filename)
 
 
-def test():
+def _test():
+    """This function is used to test the module and should not be used by other modules."""
+
+    # Constants.
     PLACE = "Barcelona, Barcelonés, Barcelona, Catalonia"
     DEFAULT_GRAPH_FILENAME = "graph.dat"
     STATIC_IGRAPH_FILENAME = "igraph.dat"
@@ -457,61 +464,62 @@ def test():
     CONGESTIONS_URL = "https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/" \
                       "2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download"
 
-    # load the graph, or download and set times it if it does not exist
+    # Load the default graph, or build it if it does not exist (and save it for later).
     if file_exists(DEFAULT_GRAPH_FILENAME):
         graph = load_data(DEFAULT_GRAPH_FILENAME)
-        print("We found a wild graph!! :D")
     else:
-        print("There is no graph :(")
         graph = build_default_graph(PLACE)
-        print("We've downloaded it!")
         save_data(graph, DEFAULT_GRAPH_FILENAME)
-        print("And we've built it! :)")
+    print("Default graph loaded!")
 
-    print(graph.number_of_nodes())
-    # load the highways, or download them and translate them to node paths if they do not exist
+    # Load the highway paths, or build them if they do not exist (and save them for later).
     if file_exists(HIGHWAYS_FILENAME):
-        print("We have the highways!! :D")
         highway_paths = load_data(HIGHWAYS_FILENAME)
     else:
-        print("The highways haven't been found :(")
         highways = download_highways(HIGHWAYS_URL)
-        print("We've downloaded them!")
         highway_paths = build_highway_paths(graph, highways)
         save_data(highway_paths, HIGHWAYS_FILENAME)
-        print("Processing finished!")
 
-    # plot the highways into a PNG image
+    # Plot the highways into a PNG image.
     save_map_as_image(get_highways_plot(graph, highway_paths, SIZE), "highways.png")
-    print("Highways have been plotted into a precious map :)")
 
+    print("Highway paths loaded and plotted!")
+
+    # Load the static igraph, or build it if it does not exist (and save it for later).
     if file_exists(STATIC_IGRAPH_FILENAME):
         igraph = load_data(STATIC_IGRAPH_FILENAME)
     else:
         igraph = build_static_igraph(graph)
         save_data(igraph, STATIC_IGRAPH_FILENAME)
+    print("Static igraph loaded!")
 
-    # download congestions (we download them every time because they are updated every 5 minutes)
+    # Download congestions (they are downloaded every time because they are updated every 5 minutes)
     congestions = download_congestions(CONGESTIONS_URL)
-    # plot the congestions into a PNG image
+
+    # Plot the congestions into a PNG image.
     save_map_as_image(get_congestions_plot(graph, highway_paths, congestions, SIZE), "congestions.png")
-    print("Congestions downloaded and plotted into a very beautiful image :)")
 
-    # get the "intelligent graph" version of the graph (taking into account the congestions of the highways)
+    print("Congestion data downloaded and plotted!")
+
+    # Get the dynamic version of the igraph (taking into account the congestions of the highways)
     igraph = build_dynamic_igraph(igraph, highway_paths, congestions)
-    print("The igraph has been built!!! The mean IQ of the planet has increased by 3 points ^-^")
-    # plot the igraph into a PNG image
+
+    # Plot the igraph into a PNG image.
     save_map_as_image(get_igraph_plot(igraph, SIZE), "igraph.png")
-    print("We now have the most intelligent graph ever plotted into a marvelous PNG image UwU")
 
-    # get "intelligent path" between two addresses
-    source = name_to_coordinates("Trinitat Nova", PLACE)
-    destination = name_to_coordinates("Port Vell", PLACE)
-    ipath = get_ipath(igraph, source, destination)
-    # plot the path into a PNG image
+    print("Dynamic igraph loaded and plotted!")
+
+    # Get the "intelligent path" between two addresses.
+    source = "Trinitat Nova"
+    destination = "Port Vell"
+    ipath = get_ipath(name_to_coordinates(source, PLACE), name_to_coordinates(destination, PLACE), destination)
+
+    # Plot the path into a PNG image.
     save_map_as_image(get_path_plot(ipath, SIZE), "ipath.png")
-    print("path.")
+
+    print("Path from", source, "to", destination, "found and plotted!")
 
 
+# This is only executed when the file is explicitly executed (with "python3 igo.py").
 if __name__ == "__main__":
-    test()
+    _test()
