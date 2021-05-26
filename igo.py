@@ -177,26 +177,17 @@ def download_highways(highways_url):
         return highways
 
 
-def download_congestions(congestions_url):
-    """Downloads a file from the specified 'congestions_url', which contains information about the 
-    current traffic in some of the main street sections of Barcelona.
-
-    Each line represents a highway specified with its id, the date in format YYYYMMDD and time in 
-    HHMMSS of the last update, the current congestion and the one that is expected in 15 minutes, 
-    all separated by #. The states are coded with integers from 0 to 6, with the following meanings:
-    no data (0), very fluid (1), fluid (2), dense (3), very dense (4), congestioned (5), closed (6).
-    
-    This information is updated every 5 minutes and it is stored and returned as a dictionary from
-    id's to Congestion.
-    """
-    with urllib.request.urlopen(congestions_url) as response:
-        lines = [line.decode("utf-8") for line in response.readlines()]
-        reader = csv.reader(lines, delimiter="#", quotechar="\"")
-        congestions = {}
-        for line in reader:
-            way_id, datetime, current_state, planned_state = map(int, line)
-            congestions[way_id] = Congestion(datetime, current_state, planned_state)
-        return congestions
+def build_highway_paths(graph, highways):
+    highway_paths = {}
+    for way_id, highway in highways.items():
+        highway_paths[way_id] = []
+        for i in range(len(highway.coordinates_list) - 1):
+            node1 = coordinates_to_node(graph, highway.coordinates_list[i])
+            node2 = coordinates_to_node(graph, highway.coordinates_list[i + 1])
+            if i > 0:
+                highway_paths[way_id].pop()  # we do this to avoid repeated nodes in the path
+            highway_paths[way_id].extend(osmnx.distance.shortest_path(graph, node1, node2, weight="length"))
+    return highway_paths
 
 
 def set_default_itime(graph):
@@ -228,63 +219,6 @@ def set_default_itime(graph):
 
         edge_data["maxspeed"] *= 1000 / 3600  # conversion from km/h to m/s
         graph[node1][node2]["itime"] = edge_data["length"] / edge_data["maxspeed"]
-
-
-def build_highway_paths(graph, highways):
-    highway_paths = {}
-    for way_id, highway in highways.items():
-        highway_paths[way_id] = []
-        for i in range(len(highway.coordinates_list) - 1):
-            node1 = coordinates_to_node(graph, highway.coordinates_list[i])
-            node2 = coordinates_to_node(graph, highway.coordinates_list[i + 1])
-            if i > 0:
-                highway_paths[way_id].pop()  # we do this to avoid repeated nodes in the path
-            highway_paths[way_id].extend(osmnx.distance.shortest_path(graph, node1, node2, weight="length"))
-    return highway_paths
-
-
-def congestion_function(congestion_state):
-    """Returns the value that represents the factor that is applied to the needed time to drive 
-    across a road taking into account the traffic congestions. This value is the evaluation of the
-    congestion_state in the following function: https://www.geogebra.org/calculator/sy4cy7zy. 
-    
-    The congestion_state should be an integer number from 1 to 5.
-
-    Table of values of the congestion_function:
-    |   1   |    2   |    3   |    4   |   5   |
-    |   1   |  1.14  |  1.70  |  3.32  |  8.44 |
-    """
-    return math.exp((congestion_state - 1) ** 2 / 7.5)
-
-
-def build_dynamic_igraph(igraph, highway_paths, congestions):
-    """Returns a new graph built from the specified igraph but with modified 'itime' edge attributes
-    that now take into account the current traffic data available, which is given by the congestions
-    and the hiwghway_paths. 
-    The specified 'congestions' must be a dictionary from id's to Congestion, and the highway_paths
-    one from id's to the list of nodes #TODO
-    """
-    igraph = igraph.copy()
-    for way_id, highway_path in highway_paths.items():
-        congestion_state = congestions[way_id].current_state
-        for i in range(len(highway_path) - 1):
-            node1 = "O_" + str(highway_path[i]) + "_" + str(highway_path[i + 1])
-            node2 = "I_" + str(highway_path[i + 1]) + "_" + str(highway_path[i])
-            if "congestions" not in igraph[node1][node2]:
-                igraph[node1][node2]["congestions"] = [congestion_state]
-            else:
-                if congestion_state == 0:
-                    congestion_state = 1
-                igraph[node1][node2]["congestions"].append(congestion_state)
-
-    for node1, node2 in igraph.edges():
-        if "congestions" in igraph[node1][node2]:
-            edge_congestions = igraph[node1][node2]["congestions"]
-            if 6 in edge_congestions:
-                igraph[node1][node2]["itime"] = float("inf")
-            else:
-                igraph[node1][node2]["itime"] *= congestion_function(statistics.mean(edge_congestions))
-    return igraph
 
 
 def bearing_itime(igraph, predecessor, node, successor):
@@ -355,6 +289,72 @@ def build_igraph_with_bearings(igraph):
 def build_static_igraph(graph):
     set_default_itime(graph)
     return build_igraph_with_bearings(graph)
+
+
+def download_congestions(congestions_url):
+    """Downloads a file from the specified 'congestions_url', which contains information about the 
+    current traffic in some of the main street sections of Barcelona.
+
+    Each line represents a highway specified with its id, the date in format YYYYMMDD and time in 
+    HHMMSS of the last update, the current congestion and the one that is expected in 15 minutes, 
+    all separated by #. The states are coded with integers from 0 to 6, with the following meanings:
+    no data (0), very fluid (1), fluid (2), dense (3), very dense (4), congestioned (5), closed (6).
+    
+    This information is updated every 5 minutes and it is stored and returned as a dictionary from
+    id's to Congestion.
+    """
+    with urllib.request.urlopen(congestions_url) as response:
+        lines = [line.decode("utf-8") for line in response.readlines()]
+        reader = csv.reader(lines, delimiter="#", quotechar="\"")
+        congestions = {}
+        for line in reader:
+            way_id, datetime, current_state, planned_state = map(int, line)
+            congestions[way_id] = Congestion(datetime, current_state, planned_state)
+        return congestions
+
+
+def congestion_function(congestion_state):
+    """Returns the value that represents the factor that is applied to the needed time to drive 
+    across a road taking into account the traffic congestions. This value is the evaluation of the
+    congestion_state in the following function: https://www.geogebra.org/calculator/sy4cy7zy. 
+    
+    The congestion_state should be an integer number from 1 to 5.
+
+    Table of values of the congestion_function:
+    |   1   |    2   |    3   |    4   |   5   |
+    |   1   |  1.14  |  1.70  |  3.32  |  8.44 |
+    """
+    return math.exp((congestion_state - 1) ** 2 / 7.5)
+
+
+def build_dynamic_igraph(igraph, highway_paths, congestions):
+    """Returns a new graph built from the specified igraph but with modified 'itime' edge attributes
+    that now take into account the current traffic data available, which is given by the congestions
+    and the hiwghway_paths. 
+    The specified 'congestions' must be a dictionary from id's to Congestion, and the highway_paths
+    one from id's to the list of nodes #TODO
+    """
+    igraph = igraph.copy()
+    for way_id, highway_path in highway_paths.items():
+        congestion_state = congestions[way_id].current_state
+        for i in range(len(highway_path) - 1):
+            node1 = "O_" + str(highway_path[i]) + "_" + str(highway_path[i + 1])
+            node2 = "I_" + str(highway_path[i + 1]) + "_" + str(highway_path[i])
+            if "congestions" not in igraph[node1][node2]:
+                igraph[node1][node2]["congestions"] = [congestion_state]
+            else:
+                if congestion_state == 0:
+                    congestion_state = 1
+                igraph[node1][node2]["congestions"].append(congestion_state)
+
+    for node1, node2 in igraph.edges():
+        if "congestions" in igraph[node1][node2]:
+            edge_congestions = igraph[node1][node2]["congestions"]
+            if 6 in edge_congestions:
+                igraph[node1][node2]["itime"] = float("inf")
+            else:
+                igraph[node1][node2]["itime"] *= congestion_function(statistics.mean(edge_congestions))
+    return igraph
 
 
 def get_ipath(igraph, source, destination):
