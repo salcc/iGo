@@ -222,33 +222,50 @@ def set_default_itime(graph):
 
 
 def bearing_itime(igraph, predecessor, node, successor):
-    # return 0
+    """Returns the time cost in seconds of going through two adjacent edges depending on the angle
+    they form given three nodes: predecessor (the source), node (the one both edges have in common) 
+    and successor (the destination) and on if the turn given by this angle is done to the left or to
+    the right.
 
+    This value is computed using a piecewise function depending on the bearing between the two 
+    edges, which is first calculated from the edge 'attribute' bearing. This angle goes from -180 to
+    180 degrees, where the sign indicates the orientation (left or right), but the function is 
+    evaluated on the absolute value of it. Moreover, the point where it changes is 50, which is 
+    considered a frontier between turning and going straight with a slight curve. 
+    (https://www.geogebra.org/calculator/fdnnamqy)
+
+    This function evaluated in the most remarkable angles has the following values:
+    |   0   |   45   |   50   |   90   |   135   |   180   |
+    |   0   |  1.72  |  3.22  |  7.61  |   9.00  |  9.81   |
+
+    The result is multiplied by the side factor, which is 1 if the turn is to the right (unmodified) 
+    and 1.5 if the turn is of more than 15 degrees to the left, since it is slower to turn left 
+    than it is to turn right. 
+    """
+
+    # Calculate the angle between both edges and normalize it between -180 nd 180 degrees.
     bearing = igraph[node][successor]["bearing"] - igraph[predecessor][node]["bearing"]
     if bearing < -180:
         bearing += 360
     elif bearing > 180:
         bearing -= 360
 
+    # The side factor is 1.5 if the bearing is more than 15 degrees to the left.
     side_factor = 1
     if bearing < -15:
         side_factor = 1.5
 
+    # Absolute value.
     if bearing < 0:
         bearing = -bearing
 
+    # Depending on the bearing the cost is computed differently.
     if bearing < 50:
         bearing_cost = math.exp(bearing / 45) - 1
     else:
         bearing_cost = math.log((bearing - 45) ** 2)
 
-    # print("b(p,n)=", igraph[predecessor][node]["bearing"], " b(n,s)=",igraph[node][successor]["bearing"], " B=", bearing,
-    #       " F=", side_factor, " C=", bearing_cost * side_factor, sep="")
-    # print((igraph.nodes[predecessor]["y"], igraph.nodes[predecessor]["x"]),
-    #       (igraph.nodes[node]["y"], igraph.nodes[node]["x"]),
-    #       (igraph.nodes[successor]["y"], igraph.nodes[successor]["x"]))
-    # print()
-
+    # The bearing cost from the function evaluation is multiplied by the side factor.
     return bearing_cost * side_factor
 
 
