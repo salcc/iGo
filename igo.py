@@ -599,13 +599,11 @@ def get_path_plot(ipath, size):
     """Returns a square StaticMap of the specified size with the specified ipath plotted with 5px
     Dodger Blue lines except for those that connect the source and destination to the rest of the 
     path. This difference is made to show the actual given coordinates compared to the ones of 
-    their nearest node that has been used to find the path. 
-    
-    A green marker is added at the source of the path, and a red one at its destination, both of 
-    them centered in the first and last coordinate of the path.
+    their nearest node that has been used to find the path. Moreover, a green marker icon is added
+    at the source of the path, and a red one at its destination.
 
     Preconditions: 
-     - 'ipath' is a list of Coordinates that contain at least the source and destination
+     - 'ipath' is a list of Coordinates that contain at least the source and destination.
      - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
     # Create an empty square map of the given size.
@@ -623,7 +621,7 @@ def get_path_plot(ipath, size):
     end_line = staticmap.Line(ipath[-2:], "LightBlue", 5)
     map.add_line(end_line)
 
-    # Add the icons into the map, centered in the first and last path's coordinates.
+    # Add the icons to mark the source and destination of the path into the map.
     source_icon = staticmap.IconMarker(ipath[0], "./icons/source.png", 10, 32)
     destination_icon = staticmap.IconMarker(ipath[-1], "./icons/destination.png", 10, 32)
     map.add_marker(source_icon)
