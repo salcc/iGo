@@ -609,15 +609,15 @@ def get_path_plot(ipath, size):
     # Create an empty square map of the given size.
     map = staticmap.StaticMap(size, size)
 
-    # Draw the line from the source coordinates to the first node of the path with a 3px Dark Turquoise line.
-    start_line = staticmap.Line(ipath[:2], "Lightblue", 5)
+    # Draw the line from the source coordinates to the first node of the path with a 5px Light Blue line.
+    start_line = staticmap.Line(ipath[:2], "LightBlue", 5)
     map.add_line(start_line)
 
-    # Draw the path with 3px Dodger Blue lines.
+    # Draw the path with 5px Dodger Blue lines.
     path_lines = staticmap.Line(ipath[1:-1], "DodgerBlue", 5)
     map.add_line(path_lines)
 
-    # Draw the line from the last node of the path to the destination coordinates with a 3px Dark Turquoise line.
+    # Draw the line from the last node of the path to the destination coordinates with a 5px Light Blue line.
     end_line = staticmap.Line(ipath[-2:], "LightBlue", 5)
     map.add_line(end_line)
 
