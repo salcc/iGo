@@ -478,7 +478,7 @@ def get_ipath(igraph, source_coordinates, destination_coordinates):
             return None
 
     # Translate the nodes back to coordinates and return the path.
-    return [node_to_coordinates(igraph, id) for id in ipath]
+    return [source_coordinates] + [node_to_coordinates(igraph, id) for id in ipath] + [destination_coordinates]
 
 
 def get_highways_plot(graph, highway_paths, size):
@@ -579,7 +579,7 @@ def get_igraph_plot(igraph, size):
 def get_path_plot(ipath, size):
     """Returns a square StaticMap of the specified size with the specified ipath plotted with 3px
     Forest Green lines. A green marker is added at the source of the path, and a red one at its
-    destination.
+    destination. # TODO
 
     Preconditions: 
      - 'ipath' is a list of Coordinates.
@@ -589,9 +589,17 @@ def get_path_plot(ipath, size):
     # Create an empty square map of the given size.
     map = staticmap.StaticMap(size, size)
 
-    # Draw the path with 3px Forest Green lines.
-    path_line = staticmap.Line(ipath, "ForestGreen", 3)
-    map.add_line(path_line)
+    # Draw the line from the source coordinates to the first node of the path with a 3px Dark Turquoise line.
+    start_line = staticmap.Line(ipath[:2], "DarkTurquoise", 3)
+    map.add_line(start_line)
+
+    # Draw the path with 3px Dodger Blue lines.
+    path_lines = staticmap.Line(ipath[1:-1], "DodgerBlue", 3)
+    map.add_line(path_lines)
+
+    # Draw the line from the last node of the path to the destination coordinates with a 3px Dark Turquoise line.
+    end_line = staticmap.Line(ipath[-2:], "DarkTurquoise", 3)
+    map.add_line(end_line)
 
     # Add the icons into the map, centered in the first and last path's coordinates.
     source_icon = staticmap.IconMarker(ipath[0], "./icons/source.png", 10, 32)
@@ -689,8 +697,8 @@ def _test():
     print("Dynamic igraph loaded and plotted!")
 
     # Get the "intelligent path" between two addresses.
-    source = "Trinitat Nova"
-    destination = "Port Vell"
+    source = "Campus Nord"
+    destination = "Plaça de Sants"
     ipath = get_ipath(igraph, name_to_coordinates(source, PLACE), name_to_coordinates(destination, PLACE))
 
     # Plot the path into a PNG image.
