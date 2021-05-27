@@ -442,8 +442,25 @@ def build_dynamic_igraph(igraph, highway_paths, congestions):
 
 
 def get_ipath(igraph, source, destination):
+    """Returns the shortest intelligently searched path in a graph from a specified source to a 
+    specified destination and None if there is no path. 
+    
+    This path is searched in terms of the edge attribute 'itime', that takes into account the 
+    length, maximum driving speed and the current traffic data of a road plus the time it takes to 
+    turn to another one depending on the angle and the side of this turn. To see further information 
+    about this attribute and how it is computed, check the functions # TODO !?!
+
+    Preconditions: 'source' and 'destination' are two Coordinates. 
+    """
+
+    # The 'source' and 'destination' coordinates are converted to igraph nodes and then translated
+    # to a Source node and Destination node respectively to search for the shortest path.
     source = "S_" + str(igraph.nodes[coordinates_to_node(igraph, source)]["metanode"])
     destination = "D_" + str(igraph.nodes[coordinates_to_node(igraph, destination)]["metanode"])
+
+    # A path will always be found, but that does not make it a valid path to return, since it could
+    # happen that the only way of getting from source to destiny is by a closed road. The resulting
+    # path would have an infinite itime and would be discarded.
     ipath = osmnx.distance.shortest_path(igraph, [source], [destination], weight="itime")[0]
     for i in range(len(ipath) - 1):
         if igraph[ipath[i]][ipath[i + 1]]["itime"] is float("inf"):
@@ -537,20 +554,6 @@ def get_igraph_plot(igraph, size):
 
     return map
 
- """Returns a square StaticMap of the specified size with the specified highway_paths plotted in 
-    2pts lines of different colors depending on their associed congestion state, which is given by 
-    the specified congestions. A highway and its congestion are related by their way IDs, and they 
-    are plotted using the coordinates of the nodes of a highway path.
-
-    The chosen colors for each state from 0 to 6 are: Dark Gray, Forest Green, Lawn Green, Orange, 
-    Orange Red, Dark Red and Dark Maroon respectively. 
-
-    Preconditions: 'highway_paths' is a dictionary from way IDs to list of nodes of the graph: the 
-    IDs relate this dictionary with the 'congestions' one, which goes from way ID to Congestion, 
-    and the nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and 
-    latitude, respectively. Finally, 'size' is a positive integer, since it is the number of pixels 
-    of the map.
-    """
 
 def get_path_plot(ipath, size):
     """Returns a square StaticMap of the specified size with the specified ipath plotted in a 3pts
