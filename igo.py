@@ -59,7 +59,7 @@ coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\
 separator_regex = re.compile(r'[,\s]\s*')
 def name_to_coordinates(name, place):
     """Returns the coordinates given a string 'name', which can either be a geocodable string by
-    the Nominatim API or a string representig a pair of coordinates, in latitude-longitude format.
+    the Nominatim API or a string representing a pair of coordinates, in latitude-longitude format.
     If the coordinates include a decimal part, a dot '.' must be used as a decimal separator.
     The pair of coordinates can be optionally separated by a comma ','.
 
@@ -114,7 +114,7 @@ def haversine(coordinates1, coordinates2):
 def coordinates_to_node(graph, coordinates):
     """Returns the node of the graph that is closest to the given coordinates.
 
-    Preconditon: All the nodes of the graph should have two attributes 'x' and 'y', which indicate
+    Precondition: All the nodes of the graph should have two attributes 'x' and 'y', which indicate
     their longitude and latitude, respectively.
 
     Note: If several nodes are at the same distance, only one of them is returned.
@@ -287,7 +287,10 @@ def bearing_itime(igraph, predecessor, node, successor):
 
     The result is multiplied by the side factor, which is 1 if the turn is to the right (unmodified) 
     and 1.5 if the turn is of more than 15 degrees to the left, since it is slower to turn left 
-    than it is to turn right. 
+    than it is to turn right.
+
+    Precondtions: 'predecessor', 'node', and 'successor' should be nodes of the 'igraph', and the
+    edges connecting them should have a valid 'bearing' attribute.
     """
 
     # Calculate the angle between both edges and normalize it between -180 nd 180 degrees.
@@ -317,22 +320,22 @@ def bearing_itime(igraph, predecessor, node, successor):
 
 
 def build_igraph_with_bearings(igraph):
-    """Returns a new graph made from the given igraph so that it is possible to search for a 
+    """Returns a new graph built from the given igraph so that it is possible to search for a
     shortest path taking into account the time it takes to turn. In order to do this, the original
-    igraph's topology is modified.  
+    igraph topology is modified.
 
-    Precondition: Every edge of the igraph has 
+    Precondition: Every edge of the igraph has # TODO
     """
     igraph_with_bearings = networkx.DiGraph()
     for node, node_data in igraph.nodes(data=True):
         in_nodes, out_nodes = [], []
         for predecessor in igraph.predecessors(node):
-            # I_3_2: vèrtex de 3, entrant des de 2 (in)
+            # I_3_2: vertex of 3, entering from 2 (in)
             id = "I_" + str(node) + "_" + str(predecessor)
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             in_nodes.append((id, predecessor))
         for successor in igraph.successors(node):
-            # O_0_1, vèrtex de 0, sortint cap a 1  (out)
+            # O_0_1, vertex of 0, exiting to 1  (out)
             id = "O_" + str(node) + "_" + str(successor)
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             out_nodes.append((id, successor))
@@ -357,32 +360,33 @@ def build_igraph_with_bearings(igraph):
 
 def build_static_igraph(graph):
     """Returns a new graph made from the given one with a set default 'itime' attribute to all the
-    original graph's edges and a modified topology that allows to search paths taking into account 
-    the angle between them.
+    original edges of the graph, and a modified topology that allows to search paths taking into
+    account the cost of turning.
     
-    To see further information about the 'itime' and the bearing, see the documentation of 
+    To see further information about the 'itime' and the bearing costs, see the documentation of
     set_default_itime() and build_igraph_with_bearings().
 
     Preconditions: Every edge of the given graph has an attribute 'length' in meters, an attribute 
     'bearing' in degrees that is the angle between north and the geodesic line from the origin node 
-    to the destination node and, in the case an edge has it, the 'maxspeed' speed is in km/h.
+    to the destination node, and in the case an edge has it, the 'maxspeed' speed is in km/h.
     """
     set_default_itime(graph)
     return build_igraph_with_bearings(graph)
 
 
 def download_congestions(congestions_url):
-    """Downloads a file from the specified 'congestions_url', which contains information about the 
-    current traffic in some of the main street sections of Barcelona.
+    """Downloads a file from the specified 'congestions_url', which contains information about the
+    current traffic in some of the main street sections of Barcelona. The data is updated every
+    five minutes.
 
     Each line represents a highway specified with its ID, the datetime in format YYYYmmddHHMMSS of
     the last update, the current congestion and the one that is expected in 15 minutes, all
     separated by '#'. The states are coded with integers from 0 to 6, with the following meanings:
-    no data (0), very fluid (1), fluid (2), dense (3), very dense (4), congestioned (5), closed (6).
-    
-    This information is updated every 5 minutes and it is stored and returned as a dictionary from
-    way ID to Congestion, which is a named tuple with three attributes: 'datetime' (a Python 
-    datetime.datetime object), 'current_state' and 'planned_state'.
+    no data (0), very fluid (1), fluid (2), dense (3), very dense (4), congested (5), closed (6).
+
+    This information is stored and returned as a dictionary from way ID to Congestion, which is a
+    named tuple with three attributes: 'datetime' (a Python datetime.datetime object),
+    'current_state' and 'planned_state'.
     """
     with urllib.request.urlopen(congestions_url) as response:
         lines = [line.decode("utf-8") for line in response.readlines()]
@@ -401,7 +405,7 @@ def congestion_function(congestion_state):
     across a road taking into account the traffic congestions. This value is the evaluation of the
     congestion_state in the following function: https://www.geogebra.org/calculator/sy4cy7zy. 
     
-    The congestion_state should be an integer number from 1 to 5.
+    The congestion_state should be a real number between 1 and 5.
 
     Table of values of the congestion_function:
     |   1   |    2   |    3   |    4   |   5   |
@@ -415,8 +419,8 @@ def build_dynamic_igraph(igraph, highway_paths, congestions):
     that now take into account the current traffic data available, which is given by the congestions
     and the hiwghway paths.
 
-    'congestions' must be a dictionary from way ID to Congestion, and the 'highway_paths' one from
-    way ID to list of nodes # TODO
+    Preconditions: 'congestions' must be a dictionary from way ID to Congestion, and the
+    'highway_paths' one from way ID to list of nodes # TODO
     """
     igraph = igraph.copy()
     for way_id, highway_path in highway_paths.items():
@@ -442,46 +446,51 @@ def build_dynamic_igraph(igraph, highway_paths, congestions):
 
 
 def get_ipath(igraph, source, destination):
-    """Returns the shortest intelligently searched path in a graph from a specified source to a 
-    specified destination and None if there is no path. 
+    """Returns the shortest intelligently searched path in a igraph, from the specified source to the
+    specified destination, which should be coordinates. If there is no path, it returns None.
     
-    This path is searched in terms of the edge attribute 'itime', that takes into account the 
-    length, maximum driving speed and the current traffic data of a road plus the time it takes to 
-    turn to another one depending on the angle and the side of this turn. To see further information 
-    about this attribute and how it is computed, check the functions # TODO !?!
+    The path is searched minimizing the edge attribute 'itime', that takes into account the length,
+    maximum driving speed and the current traffic data of a road, plus the time it takes to turn
+    depending on the angle and the side of this turn. To see further information about this
+    attribute and how it is computed, check the functions # TODO ???
 
-    Preconditions: 'source' and 'destination' are two Coordinates. 
+    Preconditions: 'igraph' is a graph which ... # TODO
     """
 
-    # The 'source' and 'destination' coordinates are converted to igraph nodes and then translated
+    # The source and destination coordinates are converted to igraph nodes and then translated
     # to a Source node and Destination node respectively to search for the shortest path.
     source = "S_" + str(igraph.nodes[coordinates_to_node(igraph, source)]["metanode"])
     destination = "D_" + str(igraph.nodes[coordinates_to_node(igraph, destination)]["metanode"])
 
-    # A path will always be found, but that does not make it a valid path to return, since it could
-    # happen that the only way of getting from source to destiny is by a closed road. The resulting
-    # path would have an infinite itime and would be discarded.
+    # Use [source] and [destination] to avoid OSMNX to iterate the characters that make the node
+    # IDs. Since a list is passed, it returns a list too, but it always has length one.
     ipath = osmnx.distance.shortest_path(igraph, [source], [destination], weight="itime")[0]
+
+    # A path will always be found, since the igraph should be strongly connected, however it could
+    # happen that the only way of going from the source to the destination is through a closed road.
+    # In this case, None is returned.
     for i in range(len(ipath) - 1):
         if igraph[ipath[i]][ipath[i + 1]]["itime"] is float("inf"):
             return None
+
+    # Translate the nodes back to coordinates and return the path.
     return [node_to_coordinates(igraph, id) for id in ipath]
 
 
 def get_highways_plot(graph, highway_paths, size):
-    """Returns a square StaticMap with the specified size with the highways plotted in 2pts black 
-    lines. They are plotted using the coordinates of the highways paths' nodes.
+    """Returns a square StaticMap with the specified size (in pixels) with the highways plotted with
+    2px black lines. They are plotted using the coordinates of the highway_paths nodes.
     
     Preconditions: 'highway_paths' is a dictionary from way ID to list of nodes of the graph, and
     the nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and 
     latitude, respectively.
+    'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
-    # Create an empty size x size map.
+    # Create an empty square map with the given size.
     map = staticmap.StaticMap(size, size)
 
     for way_id, path in highway_paths.items():
-
-        # A 2pts line is added to the map using the coordinates of the highway_path's nodes.
+        # For each highway, a 2px line is added using the coordinates of the highway_paths nodes.
         highway_line = staticmap.Line(nodes_to_coordinates_list(graph, path), "black", 2)
         map.add_line(highway_line)
 
@@ -489,32 +498,31 @@ def get_highways_plot(graph, highway_paths, size):
 
 
 def get_congestions_plot(graph, highway_paths, congestions, size):
-    """Returns a square StaticMap of the specified size with the specified highway_paths plotted in 
-    2pts lines of different colors depending on their associed congestion state, which is given by 
-    the specified congestions. A highway and its congestion are related by their way IDs, and they 
-    are plotted using the coordinates of the nodes of a highway path.
+    """Returns a square StaticMap of the specified size with the highway_paths plotted with 2px
+    lines of different colors depending on their associated congestion state, which is given by
+    the specified congestions parameter. A highway and its congestion are related by their way IDs,
+    and they are plotted using the coordinates of the nodes of a highway path.
 
-    The chosen colors for each state from 0 to 6 are: Dark Gray, Forest Green, Lawn Green, Orange, 
-    Orange Red, Dark Red and Dark Maroon respectively. 
+    The chosen colors for each state from 0 to 6 are:
+    Gray, Forest Green, Lawn Green, Orange, Orange Red, Dark Red. and Dark Maroon, respectively.
 
-    Preconditions: 'highway_paths' is a dictionary from way IDs to list of nodes of the graph: the 
-    IDs relate this dictionary with the 'congestions' one, which goes from way ID to Congestion, 
-    and the nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and 
-    latitude, respectively. Finally, 'size' is a positive integer, since it is the number of pixels 
-    of the map.
+    Preconditions: 'highway_paths' is a dictionary from way ID to list of nodes of the graph. The
+    IDs relate this dictionary with the 'congestions' one, which goes from way ID to Congestion.
+    The nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and
+    latitude, respectively.
+    'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
-    # Create an empty size x size map.
+    # Create an empty square map with the given size.
     map = staticmap.StaticMap(size, size)
 
     for way_id, path in highway_paths.items():
-
         # Every highway_path has a corresponding congestion from the way_id relation.
         congestion_state = congestions[way_id].current_state
 
-        # A dictionary from congestion_state to color is used to paint the lines.
+        # A list is used to relate the congestion_state to the color that is used to paint the lines.
         congestion_colors = ["#a9a9a9", "#228b22", "#7cfc00", "#ffa500", "#ff4500", "#bb0202", "#510101"]
 
-        # A 2pts line of the corresponding color is added to the map using the coordinates of the highway_path's nodes.
+        # For each highway, a 2px line of the corresponding color is added using the coordinates of the highway_paths nodes.
         congestion_line = staticmap.Line(nodes_to_coordinates_list(graph, path), congestion_colors[congestion_state], 2)
         map.add_line(congestion_line)
 
@@ -534,6 +542,12 @@ def icolor(ispeed, min_ispeed, max_ispeed):
 
 
 def get_igraph_plot(igraph, size):
+    """Returns a square StaticMap of the specified size with all the edges of the igraph plotted
+    with 2px lines. Each line is painted with an 'icolor'. # TODO
+
+    Preconditions: # TODO
+    'size' is a positive integer, since it indicates the dimensions in pixels of the map.
+    """
     min_ispeed, max_ispeed = float("inf"), 0
     for node1, node2, edge_data in igraph.edges(data=True):
         if "length" in edge_data:
@@ -556,33 +570,40 @@ def get_igraph_plot(igraph, size):
 
 
 def get_path_plot(ipath, size):
-    """Returns a square StaticMap of the specified size with the specified ipath plotted in a 3pts
-    ForestGreen line that has a green marker on one of its ends and a red one on the other, 
-    representing the origin and the destination of the path. 
+    """Returns a square StaticMap of the specified size with the specified ipath plotted with 3px
+    Forest Green lines. A green marker is drawn at the source of the path, and a red one in its
+    destination.
 
-    Preconditions: 'ipath' is a list of pairs of lon-lat coordinates.
-    # TODO les icones??? NON EMPTY? NO SE SI HAURIEM D'ANAR PENSANT EN DIR COSES QUE NO PODEN ESTAR 
-    BUIDES
+    Preconditions: 'ipath' is a list of Coordinates.
+    # TODO les icones? NON EMPTY? NO SE SI HAURIEM D'ANAR PENSANT EN DIR COSES QUE NO PODEN ESTAR BUIDES
+    'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
-
-    # Create a size x size map.
+    # Create an empty square map with the given size.
     map = staticmap.StaticMap(size, size)
 
-    # Add the icons from the file path into the map centered in the first and last path's coordinates.
-    source_icon = staticmap.IconMarker(ipath[0], "./icons/source.png", 10, 32)
-    destination_icon = staticmap.IconMarker(ipath[-1], "./icons/destination.png", 10, 32)
-
-    # A 3pts ForestGreen
+    # Draw the path with 3px Forest Green lines.
     path_line = staticmap.Line(ipath, "ForestGreen", 3)
     map.add_line(path_line)
+
+    # Add the icons into the map centered in the first and last path's coordinates.
+    source_icon = staticmap.IconMarker(ipath[0], "./icons/source.png", 10, 32)
+    destination_icon = staticmap.IconMarker(ipath[-1], "./icons/destination.png", 10, 32)
     map.add_marker(source_icon)
     map.add_marker(destination_icon)
+
     return map
 
 
-def get_location_plot(location, size):
+def get_location_plot(location_coordinates, size):
+    """"Returns a square StaticMap of the specified size which shows the surroundings of the
+    specified location coordinates. A green marker is drawn at the exact point represented by
+    this given coordinates.
+
+    Preconditions: 'size' is a positive integer, since it indicates the dimensions in pixels of the
+    map.
+    """
     map = staticmap.StaticMap(size, size)
-    location_icon = staticmap.IconMarker(location, "icons/source.png", 10, 32)
+    location_icon = staticmap.IconMarker(location_coordinates, "icons/source.png", 10, 32)
     map.add_marker(location_icon)
     return map
 
