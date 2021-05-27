@@ -197,7 +197,8 @@ def download_highways(highways_url):
     description and a list of pairs of longitude-latitude coordinates, all this separated by commas.
     These coordinates are the points that would define the highway in a map.
 
-    This information is stored and returned as a dictionary from way ID to Highway.
+    This information is stored and returned as a dictionary from way ID to Highway, which is a 
+    named tuple with two attributes: 'description' and 'coordinates_list'.
     """
     with urllib.request.urlopen(highways_url) as response:
         lines = [line.decode("utf-8") for line in response.readlines()]
@@ -380,7 +381,8 @@ def download_congestions(congestions_url):
     no data (0), very fluid (1), fluid (2), dense (3), very dense (4), congestioned (5), closed (6).
     
     This information is updated every 5 minutes and it is stored and returned as a dictionary from
-    way ID to Congestion.
+    way ID to Congestion, which is a named tuple with three attributes: 'datetime' (a Python 
+    datetime.datetime object), 'current_state' and 'planned_state'.
     """
     with urllib.request.urlopen(congestions_url) as response:
         lines = [line.decode("utf-8") for line in response.readlines()]
@@ -443,33 +445,62 @@ def get_ipath(igraph, source, destination):
     source = "S_" + str(igraph.nodes[coordinates_to_node(igraph, source)]["metanode"])
     destination = "D_" + str(igraph.nodes[coordinates_to_node(igraph, destination)]["metanode"])
     ipath = osmnx.distance.shortest_path(igraph, [source], [destination], weight="itime")[0]
-    ipath_itime = 0  # probablement ho traurem
     for i in range(len(ipath) - 1):
-        ipath_itime += igraph[ipath[i]][ipath[i + 1]]["itime"]
-    if ipath_itime == float("inf"):
-        return None
+        if igraph[ipath[i]][ipath[i + 1]]["itime"] is float("inf"):
+            return None
     return [node_to_coordinates(igraph, id) for id in ipath]
 
 
 def get_highways_plot(graph, highway_paths, size):
-    """Returns a StaticMap with the specified size with the highways plotted.
+    """Returns a square StaticMap with the specified size with the highways plotted in 2pts black 
+    lines. They are plotted using the coordinates of the highways paths' nodes.
     
-    'highway_paths' should be a dictionary from way IDs to a list of nodes of the graph.
+    Preconditions: 'highway_paths' is a dictionary from way ID to list of nodes of the graph, and
+    the nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and 
+    latitude, respectively.
     """
+    # Create an empty size x size map.
     map = staticmap.StaticMap(size, size)
+
     for way_id, path in highway_paths.items():
+
+        # A 2pts line is added to the map using the coordinates of the highway_path's nodes.
         highway_line = staticmap.Line(nodes_to_coordinates_list(graph, path), "black", 2)
         map.add_line(highway_line)
+
     return map
 
 
 def get_congestions_plot(graph, highway_paths, congestions, size):
+    """Returns a square StaticMap of the specified size with the specified highway_paths plotted in 
+    2pts lines of different colors depending on their associed congestion state, which is given by 
+    the specified congestions. A highway and its congestion are related by their way IDs, and they 
+    are plotted using the coordinates of the nodes of a highway path.
+
+    The chosen colors for each state from 0 to 6 are: Dark Gray, Forest Green, Lawn Green, Orange, 
+    Orange Red, Dark Red and Dark Maroon respectively. 
+
+    Preconditions: 'highway_paths' is a dictionary from way IDs to list of nodes of the graph: the 
+    IDs relate this dictionary with the 'congestions' one, which goes from way ID to Congestion, 
+    and the nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and 
+    latitude, respectively. Finally, 'size' is a positive integer, since it is the number of pixels 
+    of the map.
+    """
+    # Create an empty size x size map.
     map = staticmap.StaticMap(size, size)
+
     for way_id, path in highway_paths.items():
+
+        # Every highway_path has a corresponding congestion from the way_id relation.
         congestion_state = congestions[way_id].current_state
+
+        # A dictionary from congestion_state to color is used to paint the lines.
         congestion_colors = ["#a9a9a9", "#228b22", "#7cfc00", "#ffa500", "#ff4500", "#bb0202", "#510101"]
+
+        # A 2pts line of the corresponding color is added to the map using the coordinates of the highway_path's nodes.
         congestion_line = staticmap.Line(nodes_to_coordinates_list(graph, path), congestion_colors[congestion_state], 2)
         map.add_line(congestion_line)
+
     return map
 
 
@@ -506,11 +537,39 @@ def get_igraph_plot(igraph, size):
 
     return map
 
+ """Returns a square StaticMap of the specified size with the specified highway_paths plotted in 
+    2pts lines of different colors depending on their associed congestion state, which is given by 
+    the specified congestions. A highway and its congestion are related by their way IDs, and they 
+    are plotted using the coordinates of the nodes of a highway path.
+
+    The chosen colors for each state from 0 to 6 are: Dark Gray, Forest Green, Lawn Green, Orange, 
+    Orange Red, Dark Red and Dark Maroon respectively. 
+
+    Preconditions: 'highway_paths' is a dictionary from way IDs to list of nodes of the graph: the 
+    IDs relate this dictionary with the 'congestions' one, which goes from way ID to Congestion, 
+    and the nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and 
+    latitude, respectively. Finally, 'size' is a positive integer, since it is the number of pixels 
+    of the map.
+    """
 
 def get_path_plot(ipath, size):
+    """Returns a square StaticMap of the specified size with the specified ipath plotted in a 3pts
+    ForestGreen line that has a green marker on one of its ends and a red one on the other, 
+    representing the origin and the destination of the path. 
+
+    Preconditions: 'ipath' is a list of pairs of lon-lat coordinates.
+    # TODO les icones??? NON EMPTY? NO SE SI HAURIEM D'ANAR PENSANT EN DIR COSES QUE NO PODEN ESTAR 
+    BUIDES
+    """
+
+    # Create a size x size map.
     map = staticmap.StaticMap(size, size)
+
+    # Add the icons from the file path into the map centered in the first and last path's coordinates.
     source_icon = staticmap.IconMarker(ipath[0], "./icons/source.png", 10, 32)
     destination_icon = staticmap.IconMarker(ipath[-1], "./icons/destination.png", 10, 32)
+
+    # A 3pts ForestGreen
     path_line = staticmap.Line(ipath, "ForestGreen", 3)
     map.add_line(path_line)
     map.add_marker(source_icon)
@@ -526,7 +585,7 @@ def get_location_plot(location, size):
 
 
 def save_map_as_image(map, output_filename):
-    """Saves the StaticMap 'map' to a image, which will have the name specified in
+    """Saves the StaticMap 'map' as an image, which will have the name specified in
     'output_filename'. The format to use is determined from the filename extension."""
     map_image = map.render()
     map_image.save(output_filename)
