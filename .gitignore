@@ -4,6 +4,7 @@ __pycache__/
 graph.dat
 igraph.dat
 highways.dat
+congestions.dat
 highways.png
 congestions.png
 igraph.png

@@ -6,6 +6,7 @@ import re
 import os
 import urllib
 import csv
+from datetime import datetime
 import osmnx
 import staticmap
 import networkx
@@ -348,9 +349,9 @@ def download_congestions(congestions_url):
     """Downloads a file from the specified 'congestions_url', which contains information about the 
     current traffic in some of the main street sections of Barcelona.
 
-    Each line represents a highway specified with its ID, the date in format YYYYMMDD and time in 
-    HHMMSS of the last update, the current congestion and the one that is expected in 15 minutes, 
-    all separated by #. The states are coded with integers from 0 to 6, with the following meanings:
+    Each line represents a highway specified with its ID, the datetime in format YYYYmmddHHMMSS of
+    the last update, the current congestion and the one that is expected in 15 minutes, all
+    separated by '#'. The states are coded with integers from 0 to 6, with the following meanings:
     no data (0), very fluid (1), fluid (2), dense (3), very dense (4), congestioned (5), closed (6).
     
     This information is updated every 5 minutes and it is stored and returned as a dictionary from
@@ -361,8 +362,10 @@ def download_congestions(congestions_url):
         reader = csv.reader(lines, delimiter="#", quotechar="\"")
         congestions = {}
         for line in reader:
-            way_id, datetime, current_state, planned_state = map(int, line)
-            congestions[way_id] = Congestion(datetime, current_state, planned_state)
+            way_id, update_datetime, current_state, planned_state = line
+            way_id, current_state, planned_state = int(way_id), int(current_state), int(planned_state)
+            update_datetime = datetime.strptime(update_datetime, "%Y%m%d%H%M%S")
+            congestions[way_id] = Congestion(update_datetime, current_state, planned_state)
         return congestions
 
 

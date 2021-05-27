@@ -1,8 +1,9 @@
-import igo
-from translations import message, available_languages, build_translation_dictionaries
 import os
+from datetime import datetime
 from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
+import igo
+from translations import message, available_languages, build_translation_dictionaries
 
 
 def get_language(update, context):
@@ -89,7 +90,7 @@ def query_handler(update, context):
     elif action == "2":
         query.edit_message_text(message("Processing...", lang) + " ⏳")
         if context.user_data["function"] == "go":
-            plot_path(update, context)
+            get_and_plot_path(update, context)
         elif context.user_data["function"] == "where":
             plot_location(update, context)
     elif action == "64":
@@ -97,7 +98,20 @@ def query_handler(update, context):
     query.answer()
 
 
-def plot_path(update, context):
+def get_congestions(context):
+    if not "last_congestions_update" in context.bot_data or \
+       (datetime.now() - context.bot_data["last_congestions_update"]).total_seconds() / 60 >= 5:
+        congestions = igo.download_congestions(CONGESTIONS_URL)
+        igo.save_data(congestions, CONGESTIONS_FILENAME)
+        context.bot_data["last_congestions_update"] = congestions[1].datetime
+        print(1)
+    else:
+        congestions = igo.load_data(CONGESTIONS_FILENAME)  # We do not have to check if it exists.
+        print(2)
+    return congestions
+
+
+def get_and_plot_path(update, context):
     lang = get_language(update, context)
 
     source = context.user_data["location"]
@@ -105,7 +119,8 @@ def plot_path(update, context):
     if source == destination:
         context.bot.send_message(chat_id=update.effective_chat.id, text=message("Oh, you are already here!", lang) + " 🥳")
     else:
-        congestions = igo.download_congestions(CONGESTIONS_URL)
+        congestions = get_congestions(context)
+        igo.save_map_as_image(igo.get_congestions_plot(graph, highway_paths, congestions, SIZE), "congestions.png")
         dynamic_igraph = igo.build_dynamic_igraph(igraph, highway_paths, congestions)
         ipath = igo.get_ipath(dynamic_igraph, source, destination)
         if ipath:
@@ -138,7 +153,7 @@ def location_handler(update, context):
     if igo.is_in_place(coordinates, PLACE):
         context.user_data["location"] = coordinates
         if context.user_data["function"] == "go":
-            plot_path(update, context)
+            get_and_plot_path(update, context)
         elif context.user_data["function"] == "where":
             plot_location(update, context)
     else:
@@ -198,6 +213,7 @@ if __name__ == "__main__":
     DEFAULT_GRAPH_FILENAME = "graph.dat"
     STATIC_IGRAPH_FILENAME = "igraph.dat"
     HIGHWAYS_FILENAME = "highways.dat"
+    CONGESTIONS_FILENAME = "congestions.dat"
     SIZE = 1200
     HIGHWAYS_URL = "https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/" \
                    "1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv"
