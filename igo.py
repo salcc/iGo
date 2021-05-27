@@ -538,7 +538,7 @@ def _test():
     # Constants.
     PLACE = "Barcelona, Barcelonés, Barcelona, Catalonia"
     DEFAULT_GRAPH_FILENAME = "graph.dat"
-    STATIC_IGRAPH_FILENAME = "igraph.dat"
+    STATIC_IGRAPH_FILENAME = "static_igraph.dat"
     HIGHWAYS_FILENAME = "highways.dat"
     SIZE = 1200
     HIGHWAYS_URL = "https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/" \

@@ -2,9 +2,9 @@ venv/
 cache/
 __pycache__/
 graph.dat
-igraph.dat
 highways.dat
-congestions.dat
+static_igraph.dat
+dynamic_igraph.dat
 highways.png
 congestions.png
 igraph.png

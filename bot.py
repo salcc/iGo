@@ -98,15 +98,18 @@ def query_handler(update, context):
     query.answer()
 
 
-def get_congestions(context):
+def get_dynamic_igraph(context):
     if not "last_congestions_update" in context.bot_data or \
-       (datetime.now() - context.bot_data["last_congestions_update"]).total_seconds() / 60 >= 5:
+        (datetime.now() - context.bot_data["last_congestions_update"]).total_seconds() / 60 >= 5:
         congestions = igo.download_congestions(CONGESTIONS_URL)
-        igo.save_data(congestions, CONGESTIONS_FILENAME)
+        dynamic_igraph = igo.build_dynamic_igraph(igraph, highway_paths, congestions)
+        igo.save_data(dynamic_igraph, DYNAMIC_IGRAPH_FILENAME)
         context.bot_data["last_congestions_update"] = congestions[1].datetime
+        print(1)
     else:
-        congestions = igo.load_data(CONGESTIONS_FILENAME)  # We do not have to check if it exists.
-    return congestions
+        dynamic_igraph = igo.load_data(DYNAMIC_IGRAPH_FILENAME)  # We do not have to check if it exists.
+        print(2)
+    return dynamic_igraph
 
 
 def get_and_plot_path(update, context):
@@ -117,8 +120,7 @@ def get_and_plot_path(update, context):
     if source == destination:
         context.bot.send_message(chat_id=update.effective_chat.id, text=message("Oh, you are already here!", lang) + " 🥳")
     else:
-        congestions = get_congestions(context)
-        dynamic_igraph = igo.build_dynamic_igraph(igraph, highway_paths, congestions)
+        dynamic_igraph = get_dynamic_igraph(context)
         ipath = igo.get_ipath(dynamic_igraph, source, destination)
         if ipath:
             path_plot = igo.get_path_plot(ipath, SIZE)
@@ -208,9 +210,9 @@ def setlang(update, context):
 if __name__ == "__main__":
     PLACE = "Barcelona, Barcelonés, Barcelona, Catalonia"
     DEFAULT_GRAPH_FILENAME = "graph.dat"
-    STATIC_IGRAPH_FILENAME = "igraph.dat"
+    STATIC_IGRAPH_FILENAME = "static_igraph.dat"
+    DYNAMIC_IGRAPH_FILENAME = "dynamic_igraph.dat"
     HIGHWAYS_FILENAME = "highways.dat"
-    CONGESTIONS_FILENAME = "congestions.dat"
     SIZE = 1200
     HIGHWAYS_URL = "https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/" \
                    "1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv"
@@ -233,14 +235,14 @@ if __name__ == "__main__":
     else:
         highways = igo.download_highways(HIGHWAYS_URL)
         highway_paths = igo.build_highway_paths(graph, highways)
-        igo.save_data(highways, HIGHWAYS_FILENAME)
+        igo.save_data(highway_paths, HIGHWAYS_FILENAME)
 
     # Load the static igraph, or build it if it does not exist (and save it for later).
     if igo.file_exists(STATIC_IGRAPH_FILENAME):
         igraph = igo.load_data(STATIC_IGRAPH_FILENAME)
     else:
-        igraph = igo.build_static_igraph(graph, highway_paths)
-        igo.save_data(highway_paths, HIGHWAYS_FILENAME)
+        igraph = igo.build_static_igraph(graph)
+        igo.save_data(igraph, STATIC_IGRAPH_FILENAME)
 
     # Read the bot acces token from the file 'token.txt'.
     with open("token.txt", "r") as file:
