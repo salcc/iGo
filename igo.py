@@ -470,6 +470,10 @@ def get_ipath(igraph, source_coordinates, destination_coordinates):
     # IDs. Since a list is passed, it returns a list too, but it always has length one.
     ipath = osmnx.distance.shortest_path(igraph, [source], [destination], weight="itime")[0]
 
+    # If no path is found (if the source and destination nodes are in different SCCs), return None.
+    if not ipath:
+        return None
+
     # If the graph is strongly connected, a path will always be found. However, it could happen that
     # the only way of going from the source to the destination is through a closed road. In that
     # case, None is returned.
@@ -577,28 +581,31 @@ def get_igraph_plot(igraph, size):
 
 
 def get_path_plot(ipath, size):
-    """Returns a square StaticMap of the specified size with the specified ipath plotted with 3px
-    Forest Green lines. A green marker is added at the source of the path, and a red one at its
-    destination. # TODO
+    """Returns a square StaticMap of the specified size with the specified ipath plotted with 5px
+    Dodger Blue lines except for those that connect the source and destination to the rest of the 
+    path. This difference is made to show the actual given coordinates compared to the ones of 
+    their nearest node that has been used to find the path. 
+    
+    A green marker is added at the source of the path, and a red one at its destination, both of 
+    them centered in the first and last coordinate of the path.
 
     Preconditions: 
-     - 'ipath' is a list of Coordinates.
-    # TODO les icones? NON EMPTY? NO SE SI HAURIEM D'ANAR PENSANT EN DIR COSES QUE NO PODEN ESTAR BUIDES
+     - 'ipath' is a list of Coordinates that contain at least the source and destination
      - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
     # Create an empty square map of the given size.
     map = staticmap.StaticMap(size, size)
 
     # Draw the line from the source coordinates to the first node of the path with a 3px Dark Turquoise line.
-    start_line = staticmap.Line(ipath[:2], "DarkTurquoise", 3)
+    start_line = staticmap.Line(ipath[:2], "Lightblue", 5)
     map.add_line(start_line)
 
     # Draw the path with 3px Dodger Blue lines.
-    path_lines = staticmap.Line(ipath[1:-1], "DodgerBlue", 3)
+    path_lines = staticmap.Line(ipath[1:-1], "DodgerBlue", 5)
     map.add_line(path_lines)
 
     # Draw the line from the last node of the path to the destination coordinates with a 3px Dark Turquoise line.
-    end_line = staticmap.Line(ipath[-2:], "DarkTurquoise", 3)
+    end_line = staticmap.Line(ipath[-2:], "LightBlue", 5)
     map.add_line(end_line)
 
     # Add the icons into the map, centered in the first and last path's coordinates.
