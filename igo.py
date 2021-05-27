@@ -252,8 +252,8 @@ def set_default_itime(graph):
     have the 'itime' in seconds, this attribute is converted to m/s for all the edges in the graph.
 
     Preconditions: 
-     - Every edge of the given graph has an attribute 'length' in meters. 
-     - If an edge has an attribute 'maxspeed' this is in km/h. 
+     - Every edge has the attribute 'length' in meters.
+     - If an edge has the attribute 'maxspeed', it is in km/h.
     """
     for node1, node2, edge_data in graph.edges(data=True):
         if "maxspeed" in edge_data:
@@ -290,7 +290,7 @@ def bearing_itime(igraph, predecessor, node, successor):
     and 1.5 if the turn is of more than 15 degrees to the left, since it is slower to turn left 
     than it is to turn right.
 
-    Precondtions: 'predecessor', 'node', and 'successor' should be nodes of the 'igraph', and the
+    Preconditions: 'predecessor', 'node', and 'successor' should be nodes of the 'igraph', and the
     edges connecting them should have a valid 'bearing' attribute.
     """
 
@@ -325,33 +325,49 @@ def build_igraph_with_bearings(igraph):
     shortest path taking into account the time it takes to turn. In order to do this, the original
     igraph topology is modified.
 
-    Precondition: Every edge of the igraph has # TODO
+    # TODO
+
+    Preconditions:
+     - Every edge has the attribute 'length' in meters.
+     - Every edge has the attribute 'bearing' in degrees, representing the angle between north and
+       the geodesic line from the origin node to the destination node.
     """
+    # Create a new directed graph from scratch.
     igraph_with_bearings = networkx.DiGraph()
+
+    # Iterate for every node of the given igraph. 'igraph' only use to read information, and is not modified.
     for node, node_data in igraph.nodes(data=True):
         in_nodes, out_nodes = [], []
+        # In nodes.
         for predecessor in igraph.predecessors(node):
             # I_3_2: vertex of 3, entering from 2 (in)
             id = "I_" + str(node) + "_" + str(predecessor)
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             in_nodes.append((id, predecessor))
+
+        # Out nodes.
         for successor in igraph.successors(node):
             # O_0_1, vertex of 0, exiting to 1  (out)
             id = "O_" + str(node) + "_" + str(successor)
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             out_nodes.append((id, successor))
+
+        # Internal edges (In -> Out).
         for in_node, predecessor in in_nodes:
             for out_node, successor in out_nodes:
                 igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, predecessor, node, successor))
 
+        # Add the path Source node, and connect it to every In node (Source -> In).
         igraph_with_bearings.add_node("S_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
         for in_node, predecessor in in_nodes:
             igraph_with_bearings.add_edge("S_" + str(node), in_node, itime=0)
+
+        # Add the path Destination node, and connect it to every Out node (Out -> Destination).
         igraph_with_bearings.add_node("D_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
         for out_node, successor in out_nodes:
             igraph_with_bearings.add_edge(out_node, "D_" + str(node), itime=0)
 
-    # real edges
+    # The "real" edges of the graph (Out -> In).
     for node1, node2, edge_data in igraph.edges(data=True):
         igraph_with_bearings.add_edge("O_" + str(node1) + "_" + str(node2), "I_" + str(node2) + "_" + str(node1),
                                       itime=edge_data["itime"], length=edge_data["length"])
@@ -368,10 +384,10 @@ def build_static_igraph(graph):
     set_default_itime() and build_igraph_with_bearings().
 
     Preconditions: 
-     - Every edge of the given graph has an attribute 'length' in meters.
-     - Every edge has an attribute 'bearing' in degrees that is the angle between north and the 
-       geodesic line from the origin node to the destination node.
-     - In the case an edge has it, the 'maxspeed' speed is in km/h.
+     - Every edge has the attribute 'length' in meters.
+     - Every edge has the attribute 'bearing' in degrees, representing the angle between north and
+       the geodesic line from the origin node to the destination node.
+     - If an edge has the attribute 'maxspeed', it is in km/h.
     """
     set_default_itime(graph)
     return build_igraph_with_bearings(graph)
@@ -420,11 +436,11 @@ def congestion_function(congestion_state):
 def build_dynamic_igraph(igraph, highway_paths, congestions):
     """Returns a new graph built from the specified igraph but with modified 'itime' edge attributes
     that now take into account the current traffic data available, which is given by the congestions
-    and the hiwghway paths.
+    and the highway paths.
 
-    Preconditions: 
-     - 'congestions' is a dictionary from way ID to Congestion.
-     - 'highway_paths' is a dictionary from way ID to list of nodes # TODO
+    Preconditions:
+     - 'highway_paths' is a dictionary from way ID to list of nodes of the graph, and 'congestions'
+        is a dictionary from way ID to Congestion. The IDs relate both dictionaries. # TODO: inodes?
     """
     igraph = igraph.copy()
     for way_id, highway_path in highway_paths.items():
@@ -512,9 +528,8 @@ def get_congestions_plot(graph, highway_paths, congestions, size):
     Gray, Forest Green, Lawn Green, Orange, Orange Red, Dark Red and Dark Maroon, respectively.
 
     Preconditions: 
-     - 'highway_paths' is a dictionary from way ID to list of nodes of the graph. 
-     - The IDs relate this dictionary with the 'congestions' one, which goes from way ID to 
-       Congestion.
+     - 'highway_paths' is a dictionary from way ID to list of nodes of the graph, and 'congestions'
+        is a dictionary from way ID to Congestion. The IDs relate both dictionaries.
      - The nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and
        latitude, respectively.
      - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
