@@ -42,9 +42,15 @@ def is_in_place(coordinates, place):
     
     Precondition: 'place' should be a geocodable string by the Nominatim API.
     """
+    # The coordinates must be converted to a shapely.geometry.Point to use .intersects().
     point = shapely.geometry.Point(coordinates.longitude, coordinates.latitude)
-    shape = osmnx.geocode_to_gdf(place).loc[0, "geometry"]
-    return shape.intersects(point)
+
+    # Retrieve 'place' from the Nominatim API as a GeoDataFrame and take its geometry as a polygon 
+    # constructed from a list of coordinates.
+    shape = osmnx.geocode_to_gdf(place).loc[0, "geometry"] 
+
+    # Return True if the point is inside the shape's boundary.
+    return shape.intersects(point) 
 
 
 coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
@@ -211,6 +217,9 @@ def set_default_itime(graph):
 
     If an edge has more than one maxspeed, it is assumed that the final one is its mean. In order to 
     have the 'itime' in seconds, this attribute is converted to m/s for all the edges in the graph.
+
+    Preconditions: Every edge of the given graph has an attribute 'length' in meters and if it has
+    an attribute 'maxspeed' this is in km/h. 
     """
     for node1, node2, edge_data in graph.edges(data=True):
         if "maxspeed" in edge_data:
@@ -275,8 +284,13 @@ def bearing_itime(igraph, predecessor, node, successor):
 
 
 def build_igraph_with_bearings(igraph):
+    """Returns a new graph made from the given igraph so that it is possible to search for a 
+    shortest path taking into account the time it takes to turn. In order to do this, the original
+    igraph's topology is modified.  
+
+    Precondition: Every edge of the igraph has 
+    """
     igraph_with_bearings = networkx.DiGraph()
-    # igraph_with_bearings.graph["crs"] = igraph.graph["crs"]
     for node, node_data in igraph.nodes(data=True):
         in_nodes, out_nodes = [], []
         for predecessor in igraph.predecessors(node):
@@ -309,6 +323,17 @@ def build_igraph_with_bearings(igraph):
 
 
 def build_static_igraph(graph):
+    """Returns a new graph made from the given one with a set default 'itime' attribute to all the
+    original graph's edges and a modified topology that allows to search paths taking into account 
+    the angle between them.
+    
+    To see further information about the 'itime' and the bearing, see the documentation of 
+    set_default_itime() and build_igraph_with_bearings().
+
+    Preconditions: Every edge of the given graph has an attribute 'length' in meters, an attribute 
+    'bearing' in degrees that is the angle between north and the geodesic line from the origin node 
+    to the destination node and, in the case an edge has it, the 'maxspeed' speed is in km/h.
+    """
     set_default_itime(graph)
     return build_igraph_with_bearings(graph)
 
