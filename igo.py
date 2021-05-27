@@ -445,9 +445,10 @@ def build_dynamic_igraph(igraph, highway_paths, congestions):
     return igraph
 
 
-def get_ipath(igraph, source, destination):
-    """Returns the shortest intelligently searched path in a igraph, from the specified source to the
-    specified destination, which should be coordinates. If there is no path, it returns None.
+def get_ipath(igraph, source_coordinates, destination_coordinates):
+    """Returns the shortest intelligently searched path in a igraph, that goes from the nearest node
+    to the given source coordinates, to the nearest node to the given destination coordinates.
+    If there is no path, it returns None.
     
     The path is searched minimizing the edge attribute 'itime', that takes into account the length,
     maximum driving speed and the current traffic data of a road, plus the time it takes to turn
@@ -459,8 +460,8 @@ def get_ipath(igraph, source, destination):
 
     # The source and destination coordinates are converted to igraph nodes and then translated
     # to a Source node and Destination node respectively to search for the shortest path.
-    source = "S_" + str(igraph.nodes[coordinates_to_node(igraph, source)]["metanode"])
-    destination = "D_" + str(igraph.nodes[coordinates_to_node(igraph, destination)]["metanode"])
+    source = "S_" + str(igraph.nodes[coordinates_to_node(igraph, source_coordinates)]["metanode"])
+    destination = "D_" + str(igraph.nodes[coordinates_to_node(igraph, destination_coordinates)]["metanode"])
 
     # Use [source] and [destination] to avoid OSMNX to iterate the characters that make the node
     # IDs. Since a list is passed, it returns a list too, but it always has length one.
