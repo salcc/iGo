@@ -40,7 +40,7 @@ def load_data(filename):
 def is_in_place(coordinates, place):
     """Returns True if the coordinates are inside the boundaries of the specified place.
     
-    Precondition: 'place' should be a geocodable string by the Nominatim API.
+    Precondition: 'place' is be a geocodable string by the Nominatim API.
     """
     # The coordinates must be converted to a shapely.geometry.Point to use .intersects().
     point = shapely.geometry.Point(coordinates.longitude, coordinates.latitude)
@@ -53,17 +53,48 @@ def is_in_place(coordinates, place):
     return shape.intersects(point) 
 
 
+# The regex is compiled outside to not repeat computations.
 coordinates_regex = re.compile(r'-?[1-9][0-9]*(\.[0-9]+)?[,\s]\s*-?[1-9][0-9]*(\.[0-9]+)?')
 separator_regex = re.compile(r'[,\s]\s*')
 def name_to_coordinates(name, place):
+    """Returns the coordinates given a string 'name', which can either be a geocodable string by
+    the Nominatim API or a string representig a pair of coordinates, in latitude-longitude format.
+    If the coordinates include a decimal part, a dot '.' must be used as a decimal separator.
+    The pair of coordinates can be optionally separated by a comma ','.
+
+    The obtained coordinates should be inside the boundaries of the place specified with the
+    parameter 'place'.
+
+    ValueError is raised if the Nominatim API can not find the given name, or if the obtained
+    coordinates are not inside the boundaries of the specified place.
+
+    Usage examples, with place="Barcelona":
+     - name="Facultat de Nàutica"  -> Coordinates(longitude=2.184639040777029, latitude=41.382300799999996)
+     - name="41.38248 2.18511"     -> Coordinates(longitude=2.184639040777029, latitude=41.382300799999996)
+     - name="41.38248,    2.18511" -> Coordinates(longitude=2.184639040777029, latitude=41.382300799999996)
+     - name="41 2"                 -> ValueError: The obtained coordinates Coordinates(longitude=2.0, latitude=41.0) are not inside the boundaries of 'Barcelona'.
+     - name="Calldetenes"          -> ValueError: The obtained coordinates Coordinates(longitude=2.2834318, latitude=41.9257651) are not inside the boundaries of 'Barcelona'.
+     - name="2.18511 41.38248"     -> ValueError: The obtained coordinates Coordinates(longitude=41.38248, latitude=2.18511) are not inside the boundaries of 'Barcelona'.
+     - name="prprpr"               -> ValueError: Nominatim could not query 'prprpr, Barcelona'.
+    """
+    # Use regex to know if 'name' is a string representing a pair of coordinates or a literal place name.
     if coordinates_regex.fullmatch(name):
+        # Also use regex to split the pair of coordinates in latitude and longitude.
         lat, lng = re.split(separator_regex, name)
         lat, lng = float(lat), float(lng)
     else:
-        lat, lng = osmnx.geocoder.geocode(name + ", " + place)
+        query = name + ", " + place
+        # geocoder.geocode raise a ValueError if Nominatim does not find the place.
+        try:
+            lat, lng = osmnx.geocoder.geocode(query)
+        except ValueError:
+            raise ValueError("Nominatim could not query '" + query + "'.")
+    
     coordinates = Coordinates(lng, lat)
     if not is_in_place(coordinates, place):
-        raise Exception
+        raise ValueError("The obtained coordinates " + str(coordinates)
+                         + " are not inside the boundaries of '" + str(place) + "'.")
+    
     return coordinates
 
 
@@ -102,8 +133,8 @@ def coordinates_to_node(graph, coordinates):
 def node_to_coordinates(graph, node_id):
     """Returns the coordinates of the node of the graph identified by 'node_id'.
 
-    Precondition: The node should have two attributes 'x' and 'y', which indicate its longitude
-    and latitude, respectively.
+    Precondition: The node has two attributes 'x' and 'y', which indicate its longitude and
+    latitude, respectively.
     """
     return Coordinates(graph.nodes[node_id]["x"], graph.nodes[node_id]["y"])
 
@@ -111,8 +142,8 @@ def node_to_coordinates(graph, node_id):
 def nodes_to_coordinates_list(graph, node_list):
     """Returns a list of Coordinates given a list of nodes of the graph.
 
-    Precondition: The nodes should have two attributes 'x' and 'y', which indicate their longitude
-    and latitude, respectively.
+    Precondition: The nodes have two attributes 'x' and 'y', which indicate their longitude and
+    latitude, respectively.
     """
     return [node_to_coordinates(graph, node) for node in node_list]
 
@@ -133,7 +164,7 @@ def build_default_graph(place):
     (clockwise) between north and the geodesic line from the origin node to the destination node of
     the edge.
 
-    Precondition: 'place' should be a geocodable string by the Nominatim API.
+    Precondition: 'place' is a geocodable string by the Nominatim API.
     """
     # Download the graph for the drivable roads and simplify it.
     graph = osmnx.graph_from_place(place, network_type="drive", simplify=True)
@@ -238,8 +269,8 @@ def set_default_itime(graph):
 def bearing_itime(igraph, predecessor, node, successor):
     """Returns the time cost in seconds of going through two adjacent edges depending on the angle
     they form given three nodes: predecessor (the source), node (the one both edges have in common) 
-    and successor (the destination) and on if the turn given by this angle is done to the left or to
-    the right.
+    and successor (the destination), and on if the turn given by this angle is done to the left or
+    to the right.
 
     This value is computed using a piecewise function depending on the bearing between the two 
     edges, which is first calculated from the edge 'attribute' bearing. This angle goes from -180 to
@@ -269,11 +300,11 @@ def bearing_itime(igraph, predecessor, node, successor):
     if bearing < -15:
         side_factor = 1.5
 
-    # Absolute value.
+    # Get the absolute value.
     if bearing < 0:
         bearing = -bearing
 
-    # Depending on the bearing the cost is computed differently.
+    # Depending on the bearing, the cost is computed differently.
     if bearing < 50:
         bearing_cost = math.exp(bearing / 45) - 1
     else:
