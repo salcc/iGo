@@ -45,7 +45,7 @@ def get_coordinates(context, update, place_name, place):
     if place_name:
         try:
             return igo.name_to_coordinates(place_name, place)
-        except Exception:
+        except ValueError:
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text=message("I'm sorry, there are no results for ", lang) + place_name +
                                           message(" in Barcelona.", lang) + " 😥")
