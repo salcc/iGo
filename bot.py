@@ -104,10 +104,8 @@ def get_congestions(context):
         congestions = igo.download_congestions(CONGESTIONS_URL)
         igo.save_data(congestions, CONGESTIONS_FILENAME)
         context.bot_data["last_congestions_update"] = congestions[1].datetime
-        print(1)
     else:
         congestions = igo.load_data(CONGESTIONS_FILENAME)  # We do not have to check if it exists.
-        print(2)
     return congestions
 
 
@@ -120,7 +118,6 @@ def get_and_plot_path(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=message("Oh, you are already here!", lang) + " 🥳")
     else:
         congestions = get_congestions(context)
-        igo.save_map_as_image(igo.get_congestions_plot(graph, highway_paths, congestions, SIZE), "congestions.png")
         dynamic_igraph = igo.build_dynamic_igraph(igraph, highway_paths, congestions)
         ipath = igo.get_ipath(dynamic_igraph, source, destination)
         if ipath:
