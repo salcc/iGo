@@ -251,8 +251,9 @@ def set_default_itime(graph):
     If an edge has more than one maxspeed, it is assumed that the final one is its mean. In order to 
     have the 'itime' in seconds, this attribute is converted to m/s for all the edges in the graph.
 
-    Preconditions: Every edge of the given graph has an attribute 'length' in meters and if it has
-    an attribute 'maxspeed' this is in km/h. 
+    Preconditions: 
+     - Every edge of the given graph has an attribute 'length' in meters. 
+     - If an edge has an attribute 'maxspeed' this is in km/h. 
     """
     for node1, node2, edge_data in graph.edges(data=True):
         if "maxspeed" in edge_data:
@@ -366,9 +367,11 @@ def build_static_igraph(graph):
     To see further information about the 'itime' and the bearings, see the documentation of
     set_default_itime() and build_igraph_with_bearings().
 
-    Preconditions: Every edge of the given graph has an attribute 'length' in meters, an attribute 
-    'bearing' in degrees that is the angle between north and the geodesic line from the origin node 
-    to the destination node, and in the case an edge has it, the 'maxspeed' speed is in km/h.
+    Preconditions: 
+     - Every edge of the given graph has an attribute 'length' in meters.
+     - Every edge has an attribute 'bearing' in degrees that is the angle between north and the 
+       geodesic line from the origin node to the destination node.
+     - In the case an edge has it, the 'maxspeed' speed is in km/h.
     """
     set_default_itime(graph)
     return build_igraph_with_bearings(graph)
@@ -419,8 +422,9 @@ def build_dynamic_igraph(igraph, highway_paths, congestions):
     that now take into account the current traffic data available, which is given by the congestions
     and the hiwghway paths.
 
-    Preconditions: 'congestions' must be a dictionary from way ID to Congestion, and the
-    'highway_paths' one from way ID to list of nodes # TODO
+    Preconditions: 
+     - 'congestions' is a dictionary from way ID to Congestion.
+     - 'highway_paths' is a dictionary from way ID to list of nodes # TODO
     """
     igraph = igraph.copy()
     for way_id, highway_path in highway_paths.items():
@@ -446,9 +450,8 @@ def build_dynamic_igraph(igraph, highway_paths, congestions):
 
 
 def get_ipath(igraph, source_coordinates, destination_coordinates):
-    """Returns the shortest intelligently searched path in a igraph, that goes from the nearest node
-    to the given source coordinates, to the nearest node to the given destination coordinates.
-    If there is no path, it returns None.
+    """Returns the shortest intelligently searched path in a graph from the specified source 
+    coordinates to the specified destination coordinates or None if there is no path.
     
     The path is searched minimizing the edge attribute 'itime', that takes into account the length,
     maximum driving speed and the current traffic data of a road, plus the time it takes to turn
@@ -467,9 +470,9 @@ def get_ipath(igraph, source_coordinates, destination_coordinates):
     # IDs. Since a list is passed, it returns a list too, but it always has length one.
     ipath = osmnx.distance.shortest_path(igraph, [source], [destination], weight="itime")[0]
 
-    # A path will always be found, since the igraph should be strongly connected, however it could
-    # happen that the only way of going from the source to the destination is through a closed road.
-    # In this case, None is returned.
+    # If the graph is strongly connected, a path will always be found. However, it could happen that
+    # the only way of going from the source to the destination is through a closed road. In that
+    # case, None is returned.
     for i in range(len(ipath) - 1):
         if igraph[ipath[i]][ipath[i + 1]]["itime"] is float("inf"):
             return None
@@ -482,12 +485,13 @@ def get_highways_plot(graph, highway_paths, size):
     """Returns a square StaticMap with the specified size (in pixels) with the highways plotted with
     2px black lines. They are plotted using the coordinates of the highway_paths nodes.
     
-    Preconditions: 'highway_paths' is a dictionary from way ID to list of nodes of the graph, and
-    the nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and 
-    latitude, respectively.
-    'size' is a positive integer, since it indicates the dimensions in pixels of the map.
+    Preconditions: 
+     - 'highway_paths' is a dictionary from way ID to list of nodes of the graph.
+     - The nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and 
+       latitude, respectively.
+     - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
-    # Create an empty square map with the given size.
+    # Create an empty square map of the given size.
     map = staticmap.StaticMap(size, size)
 
     for way_id, path in highway_paths.items():
@@ -505,15 +509,17 @@ def get_congestions_plot(graph, highway_paths, congestions, size):
     and they are plotted using the coordinates of the nodes of a highway path.
 
     The chosen colors for each state from 0 to 6 are:
-    Gray, Forest Green, Lawn Green, Orange, Orange Red, Dark Red. and Dark Maroon, respectively.
+    Gray, Forest Green, Lawn Green, Orange, Orange Red, Dark Red and Dark Maroon, respectively.
 
-    Preconditions: 'highway_paths' is a dictionary from way ID to list of nodes of the graph. The
-    IDs relate this dictionary with the 'congestions' one, which goes from way ID to Congestion.
-    The nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and
-    latitude, respectively.
-    'size' is a positive integer, since it indicates the dimensions in pixels of the map.
+    Preconditions: 
+     - 'highway_paths' is a dictionary from way ID to list of nodes of the graph. 
+     - The IDs relate this dictionary with the 'congestions' one, which goes from way ID to 
+       Congestion.
+     - The nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and
+       latitude, respectively.
+     - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
-    # Create an empty square map with the given size.
+    # Create an empty square map of the given size.
     map = staticmap.StaticMap(size, size)
 
     for way_id, path in highway_paths.items():
@@ -572,21 +578,22 @@ def get_igraph_plot(igraph, size):
 
 def get_path_plot(ipath, size):
     """Returns a square StaticMap of the specified size with the specified ipath plotted with 3px
-    Forest Green lines. A green marker is drawn at the source of the path, and a red one in its
+    Forest Green lines. A green marker is added at the source of the path, and a red one at its
     destination.
 
-    Preconditions: 'ipath' is a list of Coordinates.
+    Preconditions: 
+     - 'ipath' is a list of Coordinates.
     # TODO les icones? NON EMPTY? NO SE SI HAURIEM D'ANAR PENSANT EN DIR COSES QUE NO PODEN ESTAR BUIDES
-    'size' is a positive integer, since it indicates the dimensions in pixels of the map.
+     - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
-    # Create an empty square map with the given size.
+    # Create an empty square map of the given size.
     map = staticmap.StaticMap(size, size)
 
     # Draw the path with 3px Forest Green lines.
     path_line = staticmap.Line(ipath, "ForestGreen", 3)
     map.add_line(path_line)
 
-    # Add the icons into the map centered in the first and last path's coordinates.
+    # Add the icons into the map, centered in the first and last path's coordinates.
     source_icon = staticmap.IconMarker(ipath[0], "./icons/source.png", 10, 32)
     destination_icon = staticmap.IconMarker(ipath[-1], "./icons/destination.png", 10, 32)
     map.add_marker(source_icon)
@@ -597,13 +604,15 @@ def get_path_plot(ipath, size):
 
 def get_location_plot(location_coordinates, size):
     """"Returns a square StaticMap of the specified size which shows the surroundings of the
-    specified location coordinates. A green marker is drawn at the exact point represented by
+    specified location coordinates. A green marker is added at the exact point represented by
     this given coordinates.
 
-    Preconditions: 'size' is a positive integer, since it indicates the dimensions in pixels of the
+    Precondition: 'size' is a positive integer, since it indicates the dimensions in pixels of the
     map.
     """
     map = staticmap.StaticMap(size, size)
+
+    # Add the icon into the map, centered in the location coordinates.
     location_icon = staticmap.IconMarker(location_coordinates, "icons/source.png", 10, 32)
     map.add_marker(location_icon)
     return map
@@ -611,7 +620,11 @@ def get_location_plot(location_coordinates, size):
 
 def save_map_as_image(map, output_filename):
     """Saves the StaticMap 'map' as an image, which will have the name specified in
-    'output_filename'. The format to use is determined from the filename extension."""
+    'output_filename'. The format to use is determined from the filename extension.
+
+    Precondition: the map is not empty. It has to have some kind of point, line polygon or marker
+    in it.
+    """
     map_image = map.render()
     map_image.save(output_filename)
 
