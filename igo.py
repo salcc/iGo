@@ -359,11 +359,11 @@ def build_igraph_with_bearings(igraph):
 
 
 def build_static_igraph(graph):
-    """Returns a new graph made from the given one with a set default 'itime' attribute to all the
-    original edges of the graph, and a modified topology that allows to search paths taking into
-    account the cost of turning.
-    
-    To see further information about the 'itime' and the bearing costs, see the documentation of
+    """Returns an igraph ("intelligent graph") built from the given graph. All the edges of the
+    igraph have an attribute called 'itime' which indicate the time needed to traverse that edge.
+    Moreover, the topology of the given graph is modified to account for the cost of turning.
+
+    To see further information about the 'itime' and the bearings, see the documentation of
     set_default_itime() and build_igraph_with_bearings().
 
     Preconditions: Every edge of the given graph has an attribute 'length' in meters, an attribute 
