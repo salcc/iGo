@@ -1,3 +1,7 @@
+"""
+# TODO
+"""
+
 import math
 import statistics
 import collections
@@ -18,7 +22,9 @@ Congestion = collections.namedtuple("Congestion", "datetime current_state planne
 
 
 def file_exists(filename):
-    """Returns True if the file with the specified filename is an existing regular file."""
+    """Returns True if the file with the specified filename is an existing regular file, or False
+    otherwise.
+    """
     return os.path.isfile(filename)
 
 
@@ -434,59 +440,81 @@ def congestion_function(congestion_state):
 
 
 def build_dynamic_igraph(igraph, highway_paths, congestions):
-    """Returns a new graph built from the specified igraph but with modified 'itime' edge attributes
-    that now take into account the current traffic data available, which is given by the congestions
-    and the highway paths.
-
-    Preconditions:
-     - 'highway_paths' is a dictionary from way ID to list of nodes of the graph, and 'congestions'
-        is a dictionary from way ID to Congestion. The IDs relate both dictionaries. # TODO: inodes?
+    """Returns a new igraph built from the given one but with modified 'itime' edge attributes that
+    now take into account the current traffic data available, which is given by the congestions and
+    the highway paths.
+    
+    Precondition: 'highway_paths' is a dictionary from way ID to list of nodes of the graph, and
+    'congestions' is a dictionary from way ID to Congestion. The IDs relate both dictionaries.
+    Note: 'highway_paths' has lists of nodes (integer IDs), not inodes (string IDs). This allows the
+    function to use directly the value returned by build_highway_paths.
     """
+    # Make a copy of the igraph, so the function can be called several times without influentating
+    # the given igraph.
     igraph = igraph.copy()
+
+    # Iterate over all the highway paths and compute the congestion that every edge has.
     for way_id, highway_path in highway_paths.items():
         congestion_state = congestions[way_id].current_state
-        for i in range(len(highway_path) - 1):
-            node1 = "O_" + str(highway_path[i]) + "_" + str(highway_path[i + 1])
-            node2 = "I_" + str(highway_path[i + 1]) + "_" + str(highway_path[i])
-            if "congestions" not in igraph[node1][node2]:
-                igraph[node1][node2]["congestions"] = [congestion_state]
-            else:
-                if congestion_state == 0:
-                    congestion_state = 1
-                igraph[node1][node2]["congestions"].append(congestion_state)
 
-    for node1, node2 in igraph.edges():
-        if "congestions" in igraph[node1][node2]:
-            edge_congestions = igraph[node1][node2]["congestions"]
-            if 6 in edge_congestions:
-                igraph[node1][node2]["itime"] = float("inf")
+        # Suppose that if there is no data, there is no traffic and hence it is very fluid. 
+        if congestion_state == 0:
+            congestion_state = 1
+        
+        # Iterate over all the edges of the highway path.
+        for i in range(len(highway_path) - 1):
+            # Convert from node ID to inode ID.
+            inode1 = "O_" + str(highway_path[i]) + "_" + str(highway_path[i + 1])
+            inode2 = "I_" + str(highway_path[i + 1]) + "_" + str(highway_path[i])
+            
+            # Due to data inaccuracies, some edges are assigned more than one congestion state.
+            # Here, an edge attribute called 'congestions' is added, which contains a list with all
+            # the congestion states of the edge.
+            if "congestions" not in igraph[inode1][inode2]:
+                igraph[inode1][inode2]["congestions"] = [congestion_state]
             else:
-                igraph[node1][node2]["itime"] *= congestion_function(statistics.mean(edge_congestions))
+                igraph[inode1][inode2]["congestions"].append(congestion_state)
+
+    # Now iterate over all the edges of the igraph and set calculate its itime.
+    for inode1, inode2 in igraph.edges():
+        if "congestions" in igraph[inode1][inode2]:
+            edge_congestions = igraph[inode1][inode2]["congestions"]
+            
+            if 6 in edge_congestions:
+                # If 6 is assigned to the edge, the road is closed, so its itime is infinity.
+                igraph[inode1][inode2]["itime"] = float("inf")
+            else:
+                # The itime of the edge is computed by the congestion_function, given the mean
+                # of all the congestions that have been assigned to the edge.
+                igraph[inode1][inode2]["itime"] *= congestion_function(statistics.mean(edge_congestions))
+
     return igraph
 
 
 def get_ipath(igraph, source_coordinates, destination_coordinates):
-    """Returns the shortest intelligently searched path in a graph from the specified source 
-    coordinates to the specified destination coordinates or None if there is no path.
+    """Returns the shortest intelligently searched path in an igraph, from the specified source 
+    coordinates to the specified destination coordinates, or None if there is no path.
     
     The path is searched minimizing the edge attribute 'itime', that takes into account the length,
     maximum driving speed and the current traffic data of a road, plus the time it takes to turn
-    depending on the angle and the side of this turn. To see further information about this
-    attribute and how it is computed, check the functions # TODO ???
+    depending on the angle and the side of this turn.
 
-    Preconditions: 'igraph' is a graph which ... # TODO
+    Preconditions:
+     - Every inode has two attributes 'x' and 'y', which indicate their longitude and latitude,
+       respectively.
+     - Every edge has the attribute 'itime', in seconds.
     """
 
-    # The source and destination coordinates are converted to igraph nodes and then translated
-    # to a Source node and Destination node respectively to search for the shortest path.
+    # The source and destination coordinates are converted to inodes and then translated
+    # to a Source inode and Destination inode respectively to search for the shortest path.
     source = "S_" + str(igraph.nodes[coordinates_to_node(igraph, source_coordinates)]["metanode"])
     destination = "D_" + str(igraph.nodes[coordinates_to_node(igraph, destination_coordinates)]["metanode"])
 
-    # Use [source] and [destination] to avoid OSMNX to iterate the characters that make the node
+    # Use [source] and [destination] to avoid OSMNX to iterate the characters that make the inode
     # IDs. Since a list is passed, it returns a list too, but it always has length one.
     ipath = osmnx.distance.shortest_path(igraph, [source], [destination], weight="itime")[0]
 
-    # If no path is found (if the source and destination nodes are in different SCCs), return None.
+    # If no path is found (if the source and destination inodes are in different SCCs), return None.
     if not ipath:
         return None
 
@@ -497,7 +525,7 @@ def get_ipath(igraph, source_coordinates, destination_coordinates):
         if igraph[ipath[i]][ipath[i + 1]]["itime"] is float("inf"):
             return None
 
-    # Translate the nodes back to coordinates and return the path.
+    # Convert the inodes back to coordinates and return the path.
     return [source_coordinates] + [node_to_coordinates(igraph, id) for id in ipath] + [destination_coordinates]
 
 
@@ -507,7 +535,7 @@ def get_highways_plot(graph, highway_paths, size):
     
     Preconditions: 
      - 'highway_paths' is a dictionary from way ID to list of nodes of the graph.
-     - Every node have two attributes 'x' and 'y', which indicate their longitude and latitude,
+     - Every node has two attributes 'x' and 'y', which indicate their longitude and latitude,
        respectively.
      - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
@@ -534,7 +562,7 @@ def get_congestions_plot(graph, highway_paths, congestions, size):
     Preconditions: 
      - 'highway_paths' is a dictionary from way ID to list of nodes of the graph, and 'congestions'
         is a dictionary from way ID to Congestion. The IDs relate both dictionaries.
-     - Every node have two attributes 'x' and 'y', which indicate their longitude and latitude,
+     - Every node has two attributes 'x' and 'y', which indicate their longitude and latitude,
        respectively.
      - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
@@ -567,7 +595,7 @@ def icolor(ispeed, min_ispeed, max_ispeed):
 
     The icolor ranges from red (hue = 0 degrees), to represent the slowest streets, to light
     electric blue (hue = 160 degrees), for the fastest streets. In between, it goes through gradient
-    tonalities of orange, yellow, and green. All HSL colors returned have 100% saturation, and 50%
+    shades of orange, yellow, and green. All HSL colors returned have 100% saturation, and 50%
     lightness.
 
     In case max_ispeed is equal to min_ispeed, "yellow" however the value of the parameter 'ispeed',
@@ -605,13 +633,13 @@ def get_igraph_plot(igraph, size):
     Preconditions:
      - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
      - Every edge has the attribute 'length', in meters, and the attribute 'itime', in seconds.
-     - Every node have two attributes 'x' and 'y', which indicate their longitude and latitude,
+     - Every inode has two attributes 'x' and 'y', which indicate their longitude and latitude,
        respectively.
     """
     # First, iterate over all the edges to calculate min_ispeed and max_ispeed, which are needed
     # to call the icolor function.
     min_ispeed, max_ispeed = float("inf"), 0
-    for node1, node2, edge_data in igraph.edges(data=True):
+    for inode1, inode2, edge_data in igraph.edges(data=True):
         if "length" in edge_data:
             ispeed = edge_data["length"] / edge_data["itime"]
             if ispeed != 0:
@@ -625,21 +653,21 @@ def get_igraph_plot(igraph, size):
 
     # Iterate over all the edges again to paint them with the computed icolor into the map using 2px
     # lines.
-    for node1, node2, edge_data in igraph.edges(data=True):
+    for inode1, inode2, edge_data in igraph.edges(data=True):
         if "length" in edge_data:
             ispeed = edge_data["length"] / edge_data["itime"]
-            iline = staticmap.Line([node_to_coordinates(igraph, node1), node_to_coordinates(igraph, node2)],
+            iline = staticmap.Line([node_to_coordinates(igraph, inode1), node_to_coordinates(igraph, inode2)],
                                    icolor(ispeed, min_ispeed, max_ispeed), 2)
             map.add_line(iline)
 
     return map
 
 
-def get_path_plot(ipath, size):
+def get_ipath_plot(ipath, size):
     """Returns a square StaticMap of the specified size with the specified ipath plotted with 5px
     Dodger Blue lines except for those that connect the source and destination to the rest of the 
     path. This difference is made to show the actual given coordinates compared to the ones of 
-    their nearest node that has been used to find the path. Moreover, a green marker icon is added
+    their nearest inode that has been used to find the path. Moreover, a green marker icon is added
     at the source of the path, and a red one at its destination.
 
     Preconditions: 
@@ -649,7 +677,7 @@ def get_path_plot(ipath, size):
     # Create an empty square map of the given size.
     map = staticmap.StaticMap(size, size)
 
-    # Draw the line from the source coordinates to the first node of the path with a 5px Light Blue line.
+    # Draw the line from the source coordinates to the first inode of the path with a 5px Light Blue line.
     start_line = staticmap.Line(ipath[:2], "LightBlue", 5)
     map.add_line(start_line)
 
@@ -657,7 +685,7 @@ def get_path_plot(ipath, size):
     path_lines = staticmap.Line(ipath[1:-1], "DodgerBlue", 5)
     map.add_line(path_lines)
 
-    # Draw the line from the last node of the path to the destination coordinates with a 5px Light Blue line.
+    # Draw the line from the last inode of the path to the destination coordinates with a 5px Light Blue line.
     end_line = staticmap.Line(ipath[-2:], "LightBlue", 5)
     map.add_line(end_line)
 
@@ -756,13 +784,13 @@ def _test():
 
     print("Dynamic igraph loaded and plotted!")
 
-    # Get the "intelligent path" between two addresses.
+    # Get the ipath between two addresses.
     source = "Campus Nord"
-    destination = "Plaça de Sants"
+    destination = "Sagrada Familia"
     ipath = get_ipath(igraph, name_to_coordinates(source, PLACE), name_to_coordinates(destination, PLACE))
 
-    # Plot the path into a PNG image.
-    save_map_as_image(get_path_plot(ipath, SIZE), "ipath.png")
+    # Plot the ipath into a PNG image.
+    save_map_as_image(get_ipath_plot(ipath, SIZE), "ipath.png")
 
     print("Path from", source, "to", destination, "found and plotted!")
 

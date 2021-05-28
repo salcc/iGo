@@ -123,9 +123,9 @@ def get_and_plot_path(update, context):
         dynamic_igraph = get_dynamic_igraph(context)
         ipath = igo.get_ipath(dynamic_igraph, source, destination)
         if ipath:
-            path_plot = igo.get_path_plot(ipath, SIZE)
+            ipath_plot = igo.get_ipath_plot(ipath, SIZE)
             filename = "ipath-{}-{}.png".format(source, destination)
-            igo.save_map_as_image(path_plot, filename)
+            igo.save_map_as_image(ipath_plot, filename)
             context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, "rb"))
             os.remove(filename)
         else:
