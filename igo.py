@@ -283,10 +283,10 @@ def bearing_itime(igraph, predecessor, node, successor):
 
     This value is computed using a piecewise function depending on the bearing between the two 
     edges, which is first calculated from the edge 'attribute' bearing. This angle goes from -180 to
-    180 degrees, where the sign indicates the orientation (left or right), but the function is 
-    evaluated on the absolute value of it. Moreover, the point where it changes is 50, which is 
-    considered a frontier between turning and going straight with a slight curve. 
-    (https://www.geogebra.org/calculator/fdnnamqy)
+    180 degrees, where the sign indicates the orientation (left or right), but the mathematical
+    function is evaluated on the absolute value of it. Moreover, the point where it changes is 50,
+    which is considered a frontier between turning and going straight with a slight curve. A graph
+    of the mathematical function can be seen here: https://www.geogebra.org/calculator/fdnnamqy.
 
     This function evaluated in the most remarkable angles has the following values:
     |   0   |   45   |   50   |   90   |   135   |   180   |
@@ -637,8 +637,6 @@ def icolor(ispeed, min_ispeed, max_ispeed):
     since a proportion can not be calculated.
 
     Precondition: 0 < min_ispeed <= ispeed <= max_ispeed, or ispeed = 0, to represent a closed road.
-
-    More information about HSL: https://en.wikipedia.org/wiki/HSL_and_HSV.
     """
     # If ispeed is 0, it represents a closed road, which should painted black.
     if ispeed == 0:
