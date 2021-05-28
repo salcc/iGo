@@ -114,7 +114,7 @@ def haversine(coordinates1, coordinates2):
 def coordinates_to_node(graph, coordinates):
     """Returns the node of the graph that is closest to the given coordinates.
 
-    Precondition: All the nodes of the graph should have two attributes 'x' and 'y', which indicate
+    Precondition: All the nodes of the graph have two attributes 'x' and 'y', which indicate
     their longitude and latitude, respectively.
 
     Note: If several nodes are at the same distance, only one of them is returned.
@@ -217,10 +217,15 @@ def download_highways(highways_url):
 
 
 def build_highway_paths(graph, highways):
-    """Returns a dictionary from way ID to list of nodes of the graph. Each list of nodes represent
-    the respective highway from the parameter 'highways', which should be a dictionary from way ID
-    to Highway. This function is useful to translate the highways from lists of coordinates to lists
-    of nodes.
+    """Returns a dictionary from way ID to list of nodes of the graph. Each list of nodes represents
+    the respective highway from the parameter 'highways'. This function translates the highways from
+    lists of coordinates to lists of nodes.
+
+    Preconditions: 
+     - 'highways' is a dictionary from way ID to Highway.
+     - Every node has two attributes 'x' and 'y', which indicate their longitude and latitude,
+       respectively.
+     - Every edge has the attribute 'length', in meters.
     """
     highway_paths = {}
     for way_id, highway in highways.items():
@@ -290,8 +295,9 @@ def bearing_itime(igraph, predecessor, node, successor):
     and 1.5 if the turn is of more than 15 degrees to the left, since it is slower to turn left 
     than it is to turn right.
 
-    Preconditions: 'predecessor', 'node', and 'successor' should be nodes of the 'igraph', and the
-    edges connecting them should have a valid 'bearing' attribute.
+    Preconditions: 
+     - 'predecessor', 'node', and 'successor' are nodes of the 'igraph'.
+     - The edges connecting the nodes have a valid 'bearing' attribute.
     """
 
     # Calculate the angle between both edges and normalize it between -180 nd 180 degrees.
@@ -327,39 +333,38 @@ def build_igraph_with_bearings(igraph):
     
     The main idea is that, when an edge enters a node and there is more than one exiting edge, 
     choosing has a certain bearing cost depending on the angle they form. The way in which that 
-    is accomplished is by transforming each node of the igraph in multiple iNodes of different type 
+    is accomplished is by transforming each node of the igraph in multiple inodes of different type 
     and adding new edges between them while maintaining the original ones.
 
-    The node types are:
-     - In nodes: They are of the form I_node_predecessor. A node of this type is created for every 
-       original edge comming from a node 'predecessor' that enters to 'node'. 
-     - Out node: They are of the form O_node_successor. A node of this type is created for every
-       original edge that extis from 'node' to a node 'successor'.
-     - Source nodes: There is one for each original node connected with outgoing edges to all the 
-       In nodes of it. They are used as an origin to be able to search paths from anywhere without
-       an arbitrary bearing decision taken. It is not possible to enter a Source node.
-     - Destination nodes: There is one for each original node connected with ingoing edges to all 
-       the Out nodes of it. They are used as a destination to be able to search paths to anywhere
-       an arbitrary bearing decision taken. It is not possible to exit a Destination node.
+    The inode types are:
+     - In inodes: They are of the form I_node_predecessor. An inode of this type is created for 
+       every original edge comming from 'predecessor' that enters to 'node'. 
+     - Out inodes: They are of the form O_node_successor. An inode of this type is created for every
+       original edge that extis from 'node' to 'successor'.
+     - Source inodes: There is one for each original node connected with outgoing edges to all its 
+       In inodes. They are used as an origin to be able to search paths from anywhere without an 
+       arbitrary bearing decision taken. It is not possible to enter a Source inode.
+     - Destination inodes: There is one for each original node connected with ingoing edges to all 
+       its Out inodes. They are used as a destination to be able to search paths to anywhere without
+       an arbitrary bearing decision taken. It is not possible to exit a Destination inode.
     
     The edge types are:
-     - Original edges: They go  from an Out node to an In node and are of the form 
+     - Original edges: They go  from an Out inode to an In inode and are of the form 
        O_predecessor_successor -> I_successor_predecessor. Their 'itime' and 'length' attributes 
        remain untouched. 
-     - Bearing edges: A bearing edge is created from each In node to every Out node of a same 
+     - Bearing edges: A bearing edge is created from each In inode to every Out inode of a same 
        original node. These are every possible choice of exiting a node once one has entered it and 
        are of the form I_node_predecessor -> I_node_successor. Bearing edges can be thought to be 
-       "inside" of what was an old node as a structure that gives the cost in seconds of turning 
-       (bearing cost) between two original edges with their only attribute 'itime', which is 
+       "inside" of what was an old node. They form a structure that gives the cost in seconds of 
+       turning (bearing cost) between two original edges with their only attribute 'itime', which is 
        calculated using the bearing_itime() function of this module.
-     - Path-ends edges: These are the edges that connect the Source and Destination nodes to the
+     - Path-ends edges: These are the edges that connect the Source and Destination inodes to the
        graph and are of the form S_node -> I_node_successor or O_node_predecessor -> D_node. Their
        only attribute 'itime' is 0 seconds.
 
     In conclusion, the bearing cost of two original edges is the 'itime' of the inner bearing edge 
-    that connects two iNodes created from the old node that was common in the two edges.
-    
-    From now on, the graph is considered intelligent and all its nodes are referred as iNodes.
+    that connects two iNodes created from the old node that was common in the two edges. A graph 
+    made of inodes is called an igraph, which stands for 'intelligent graph'. 
 
     The result of doing all this in a simple example can be seen in the following link:
     # TODO
@@ -372,7 +377,7 @@ def build_igraph_with_bearings(igraph):
     # Create a new directed graph from scratch.
     igraph_with_bearings = networkx.DiGraph()
 
-    # Iterate for every node of the given igraph. 'igraph' only use to read information, and is not modified.
+    # Iterate for every node of the given graph. 'graph' is only used to read information, and is not modified.
     for node, node_data in igraph.nodes(data=True):
         in_nodes, out_nodes = [], []
         # In nodes.
@@ -387,12 +392,12 @@ def build_igraph_with_bearings(igraph):
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             out_nodes.append((id, successor))
 
-        # Internal edges (In -> Out). Here is where the itime associated to turning is added.
+        # Bearing edges (In -> Out). Here is where the itime associated to turning is added.
         for in_node, predecessor in in_nodes:
             for out_node, successor in out_nodes:
                 igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, predecessor, node, successor))
 
-        # Add the path Source node, and connect it to every In node (Source -> In).
+        # Add the Source nodes, and connect it to every In node (Source -> In).
         igraph_with_bearings.add_node("S_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
         for in_node, predecessor in in_nodes:
             igraph_with_bearings.add_edge("S_" + str(node), in_node, itime=0)
