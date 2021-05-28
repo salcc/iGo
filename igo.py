@@ -252,7 +252,7 @@ def set_default_itime(graph):
     have the 'itime' in seconds, this attribute is converted to m/s for all the edges in the graph.
 
     Preconditions: 
-     - Every edge has the attribute 'length' in meters.
+     - Every edge has the attribute 'length', in meters.
      - If an edge has the attribute 'maxspeed', it is in km/h.
     """
     for node1, node2, edge_data in graph.edges(data=True):
@@ -365,8 +365,8 @@ def build_igraph_with_bearings(igraph):
     # TODO
 
     Preconditions:
-     - Every edge has the attribute 'length' in meters.
-     - Every edge has the attribute 'bearing' in degrees, representing the angle between north and
+     - Every edge has the attribute 'length', in meters.
+     - Every edge has the attribute 'bearing', in degrees, representing the angle between north and
        the geodesic line from the origin node to the destination node.
     """
     # Create a new directed graph from scratch.
@@ -419,8 +419,8 @@ def build_static_igraph(graph):
     set_default_itime() and build_igraph_with_bearings().
 
     Preconditions: 
-     - Every edge has the attribute 'length' in meters.
-     - Every edge has the attribute 'bearing' in degrees, representing the angle between north and
+     - Every edge has the attribute 'length', in meters.
+     - Every edge has the attribute 'bearing', in degrees, representing the angle between north and
        the geodesic line from the origin node to the destination node.
      - If an edge has the attribute 'maxspeed', it is in km/h.
     """
@@ -542,8 +542,8 @@ def get_highways_plot(graph, highway_paths, size):
     
     Preconditions: 
      - 'highway_paths' is a dictionary from way ID to list of nodes of the graph.
-     - The nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and 
-       latitude, respectively.
+     - Every node have two attributes 'x' and 'y', which indicate their longitude and latitude,
+       respectively.
      - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
     # Create an empty square map of the given size.
@@ -569,8 +569,8 @@ def get_congestions_plot(graph, highway_paths, congestions, size):
     Preconditions: 
      - 'highway_paths' is a dictionary from way ID to list of nodes of the graph, and 'congestions'
         is a dictionary from way ID to Congestion. The IDs relate both dictionaries.
-     - The nodes of the graph have two attributes 'x' and 'y', which indicate their longitude and
-       latitude, respectively.
+     - Every node have two attributes 'x' and 'y', which indicate their longitude and latitude,
+       respectively.
      - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
     # Create an empty square map of the given size.
@@ -591,24 +591,60 @@ def get_congestions_plot(graph, highway_paths, congestions, size):
 
 
 def icolor(ispeed, min_ispeed, max_ispeed):
+    """This is an auxiliary function for get_igraph_plot that returns a string representing a color
+    in HSL (hue, saturation, lightness) format, where the hue of the color is directly proportional
+    to the given ispeed. min_ispeed and max_ispeed should be the minimum and maximum ispeed values
+    of the igraph. However, min_ispeed should not be zero, but the minimum ispeed greater than zero.
+    Those two values are used to compute the proportions to get the icolor and, in principle, they
+    should be the same for all the calls to the function of a single graph plot.
+
+    The value ispeed should be zero to represent a closed road. In that case "black" is returned.
+
+    The icolor ranges from red (hue = 0 degrees), to represent the slowest streets, to light
+    electric blue (hue = 160 degrees), for the fastest streets. In between, it goes through gradient
+    tonalities of orange, yellow, and green. All HSL colors returned have 100% saturation, and 50%
+    lightness.
+
+    In case max_ispeed is equal to min_ispeed, "yellow" however the value of the parameter 'ispeed',
+    since a proportion can not be calculated.
+
+    Precondition: 0 < min_ispeed <= ispeed <= max_ispeed, or ispeed = 0, to represent a closed road.
+
+    More information about HSL: https://en.wikipedia.org/wiki/HSL_and_HSV.
+    """
+    # If ispeed is 0, it represents a closed road, which should painted black.
     if ispeed == 0:
         return "black"
+
     ispeed_range = max_ispeed - min_ispeed
+
+    # If min_ispeed is equal to max_ispeed, return "yellow".
     if ispeed_range == 0:
-        value = 0.5
-    else:
-        value = (ispeed - min_ispeed) / ispeed_range
-    hue = value * 160
+        return "yellow"
+
+    proportion = (ispeed - min_ispeed) / ispeed_range
+
+    # Multiply by 160, which represents the fastest ispeed (light electric blue).
+    hue = proportion * 160
+
+    # Return the color in HSL format.
     return "hsl({},100%,50%)".format(round(hue, 2))
 
 
 def get_igraph_plot(igraph, size):
     """Returns a square StaticMap of the specified size with all the edges of the igraph plotted
-    with 2px lines. Each line is painted with an 'icolor'. # TODO
+    with 2px lines. Each line is painted with an 'icolor' that represents the speed of that street
+    proportionally to the rest of speeds of the graphs. If a road is closed, it is painted black.
+    See the icolor function for more information about the color of the painted lines.
 
-    Preconditions: # TODO
-    'size' is a positive integer, since it indicates the dimensions in pixels of the map.
+    Preconditions:
+     - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
+     - Every edge has the attribute 'length', in meters, and the attribute 'itime', in seconds.
+     - Every node have two attributes 'x' and 'y', which indicate their longitude and latitude,
+       respectively.
     """
+    # First, iterate over all the edges to calculate min_ispeed and max_ispeed, which are needed
+    # to call the icolor function.
     min_ispeed, max_ispeed = float("inf"), 0
     for node1, node2, edge_data in igraph.edges(data=True):
         if "length" in edge_data:
@@ -619,7 +655,11 @@ def get_igraph_plot(igraph, size):
                 if ispeed > max_ispeed:
                     max_ispeed = ispeed
 
+    # Create an empty square map of the given size.
     map = staticmap.StaticMap(size, size)
+
+    # Iterate over all the edges again to paint them with the computed icolor into the map using 2px
+    # lines.
     for node1, node2, edge_data in igraph.edges(data=True):
         if "length" in edge_data:
             ispeed = edge_data["length"] / edge_data["itime"]
@@ -634,31 +674,29 @@ def get_path_plot(ipath, size):
     """Returns a square StaticMap of the specified size with the specified ipath plotted with 5px
     Dodger Blue lines except for those that connect the source and destination to the rest of the 
     path. This difference is made to show the actual given coordinates compared to the ones of 
-    their nearest node that has been used to find the path. 
-    
-    A green marker is added at the source of the path, and a red one at its destination, both of 
-    them centered in the first and last coordinate of the path.
+    their nearest node that has been used to find the path. Moreover, a green marker icon is added
+    at the source of the path, and a red one at its destination.
 
     Preconditions: 
-     - 'ipath' is a list of Coordinates that contain at least the source and destination
+     - 'ipath' is a list of Coordinates that contain at least the source and destination.
      - 'size' is a positive integer, since it indicates the dimensions in pixels of the map.
     """
     # Create an empty square map of the given size.
     map = staticmap.StaticMap(size, size)
 
-    # Draw the line from the source coordinates to the first node of the path with a 3px Dark Turquoise line.
-    start_line = staticmap.Line(ipath[:2], "Lightblue", 5)
+    # Draw the line from the source coordinates to the first node of the path with a 5px Light Blue line.
+    start_line = staticmap.Line(ipath[:2], "LightBlue", 5)
     map.add_line(start_line)
 
-    # Draw the path with 3px Dodger Blue lines.
+    # Draw the path with 5px Dodger Blue lines.
     path_lines = staticmap.Line(ipath[1:-1], "DodgerBlue", 5)
     map.add_line(path_lines)
 
-    # Draw the line from the last node of the path to the destination coordinates with a 3px Dark Turquoise line.
+    # Draw the line from the last node of the path to the destination coordinates with a 5px Light Blue line.
     end_line = staticmap.Line(ipath[-2:], "LightBlue", 5)
     map.add_line(end_line)
 
-    # Add the icons into the map, centered in the first and last path's coordinates.
+    # Add the icons to mark the source and destination of the path into the map.
     source_icon = staticmap.IconMarker(ipath[0], "./icons/source.png", 10, 32)
     destination_icon = staticmap.IconMarker(ipath[-1], "./icons/destination.png", 10, 32)
     map.add_marker(source_icon)
