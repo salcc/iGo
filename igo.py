@@ -327,10 +327,47 @@ def bearing_itime(igraph, predecessor, node, successor):
 
 
 def build_igraph_with_bearings(igraph):
-    """Returns a new graph built from the given igraph so that it is possible to search for a
-    shortest path taking into account the time it takes to turn. In order to do this, the original
-    igraph topology is modified.
+    """Returns a new graph built from the given one so that it is possible to search for a shortest 
+    path taking into account the time it takes to turn. In order to do this, the original graph 
+    topology is modified. 
+    
+    The main idea is that, when an edge enters a node and there is more than one exiting edge, 
+    choosing has a certain bearing cost depending on the angle they form. The way in which that 
+    is accomplished is by transforming each node of the igraph in multiple iNodes of different type 
+    and adding new edges between them while maintaining the original ones.
 
+    The node types are:
+     - In nodes: They are of the form I_node_predecessor. A node of this type is created for every 
+       original edge comming from a node 'predecessor' that enters to 'node'. 
+     - Out node: They are of the form O_node_successor. A node of this type is created for every
+       original edge that extis from 'node' to a node 'successor'.
+     - Source nodes: There is one for each original node connected with outgoing edges to all the 
+       In nodes of it. They are used as an origin to be able to search paths from anywhere without
+       an arbitrary bearing decision taken. It is not possible to enter a Source node.
+     - Destination nodes: There is one for each original node connected with ingoing edges to all 
+       the Out nodes of it. They are used as a destination to be able to search paths to anywhere
+       an arbitrary bearing decision taken. It is not possible to exit a Destination node.
+    
+    The edge types are:
+     - Original edges: They go  from an Out node to an In node and are of the form 
+       O_predecessor_successor -> I_successor_predecessor. Their 'itime' and 'length' attributes 
+       remain untouched. 
+     - Bearing edges: A bearing edge is created from each In node to every Out node of a same 
+       original node. These are every possible choice of exiting a node once one has entered it and 
+       are of the form I_node_predecessor -> I_node_successor. Bearing edges can be thought to be 
+       "inside" of what was an old node as a structure that gives the cost in seconds of turning 
+       (bearing cost) between two original edges with their only attribute 'itime', which is 
+       calculated using the bearing_itime() function of this module.
+     - Path-ends edges: These are the edges that connect the Source and Destination nodes to the
+       graph and are of the form S_node -> I_node_successor or O_node_predecessor -> D_node. Their
+       only attribute 'itime' is 0 seconds.
+
+    In conclusion, the bearing cost of two original edges is the 'itime' of the inner bearing edge 
+    that connects two iNodes created from the old node that was common in the two edges.
+    
+    From now on, the graph is considered intelligent and all its nodes are referred as iNodes.
+
+    The result of doing all this in a simple example can be seen in the following link:
     # TODO
 
     Preconditions:
@@ -346,19 +383,17 @@ def build_igraph_with_bearings(igraph):
         in_nodes, out_nodes = [], []
         # In nodes.
         for predecessor in igraph.predecessors(node):
-            # I_3_2: vertex of 3, entering from 2 (in)
             id = "I_" + str(node) + "_" + str(predecessor)
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             in_nodes.append((id, predecessor))
 
         # Out nodes.
         for successor in igraph.successors(node):
-            # O_0_1, vertex of 0, exiting to 1  (out)
             id = "O_" + str(node) + "_" + str(successor)
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             out_nodes.append((id, successor))
 
-        # Internal edges (In -> Out).
+        # Internal edges (In -> Out). Here is where the itime associated to turning is added.
         for in_node, predecessor in in_nodes:
             for out_node, successor in out_nodes:
                 igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, predecessor, node, successor))
@@ -373,7 +408,7 @@ def build_igraph_with_bearings(igraph):
         for out_node, successor in out_nodes:
             igraph_with_bearings.add_edge(out_node, "D_" + str(node), itime=0)
 
-    # The "real" edges of the graph (Out -> In).
+    # The "real" edges of the graph (Out -> In). Their 'itime' and 'length' attributes are mantained.
     for node1, node2, edge_data in igraph.edges(data=True):
         igraph_with_bearings.add_edge("O_" + str(node1) + "_" + str(node2), "I_" + str(node2) + "_" + str(node1),
                                       itime=edge_data["itime"], length=edge_data["length"])
