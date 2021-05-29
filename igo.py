@@ -12,7 +12,7 @@ import re
 import os
 import urllib
 import csv
-from datetime import datetimeº
+from datetime import datetime
 import osmnx
 import staticmap
 import networkx
@@ -362,21 +362,12 @@ def build_igraph_with_bearings(graph):
     Real edges are made from the original edges of the graph, which represent the physical streets.
     They go from Out to In inodes, and their their 'itime' and 'length' attributes remain untouched.
     For example, an edge 3 -> 7 from the given graph, would be converted to 'O_3_7' -> 'I_7_3'.
-<<<<<<< HEAD
     
     Bearing edges are created from each In inode to every Out inode of a same metanode, forming
     every possible choice of exiting a node once one has entered it. The 'itime' of the bearing
     edges is the cost of in seconds of turning from one real edge to another, and is calculated by
     the bearing_itime() function.
     
-=======
-    
-    Bearing edges are created from each In inode to every Out inode of a same metanode, forming
-    every possible choice of exiting a node once one has entered it. The 'itime' of the bearing
-    edges is the cost of in seconds of turning from one real edge to another, and is calculated by
-    the bearing_itime() function.
-    
->>>>>>> 98dacd0cea06597abdd8bf4566511814d6ed4e11
     Path-ends edges are the ones that connect with the Source and Destination inodes. For each
     metanode, its Source inode is connected to all its Out inodes using path-ends edges, and
     similarly, all its In inodes are connected to its Destination inode with path-ends edges too.
@@ -647,15 +638,11 @@ def icolor(ispeed, min_ispeed, max_ispeed):
     graph plot. However, if the ispeed is zero (closed road) "black" is returned, and if the range 
     is zero (same ispeed in all the igraph) "yellow" is returned.
 
-<<<<<<< HEAD
     The icolor ranges from red (hue = 0 degrees), to represent the slowest streets, to medium spring
     green (hue = 160 degrees), for the fastest ones. In between, it goes through gradient shades of 
     orange, yellow, and green. All HSL colors returned have 100% saturation, and 50% lightness.
 
     Precondition: 0 < min_ispeed <= ispeed <= max_ispeed, or ispeed = 0, to represent a closed road
-=======
-    Precondition: 0 < min_ispeed <= ispeed <= max_ispeed, or ispeed = 0, to represent a closed road.
->>>>>>> 98dacd0cea06597abdd8bf4566511814d6ed4e11
     """
     # If ispeed is 0, it represents a closed road, which should painted black.
     if ispeed == 0:
