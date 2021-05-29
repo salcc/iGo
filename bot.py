@@ -1,3 +1,24 @@
+"""
+The iGo Telegram bot shows users in Barcelona the most intelligent way of driving from their current 
+location to their desired destination using the concept of itime.
+
+To calculate the itime of a path, several data of Barcelona's road network is taken into account: 
+the length and maximum driving speed of each street, the current traffic data available and the cost
+of turning. The needed computations are handled by the igo module. 
+
+The bot supports the following commands:
+ - /go [destination]: Shows the user a map with the fastest way to go from their current location to
+   the specified destination. 
+ - /where: Shows the user a map with their current location.
+ - /setlang [language code]: Sets the bot's language.
+ - /author: Shows who has developed the bot.
+ - /help: Shows a list of the available commands and what are they used for.
+ - /pos [location]: Changes the user location to the specified one (intended for developement).
+
+The iGo bot is available in different languages. The translations of the shown messages are handled
+by the translations module.
+"""
+
 from datetime import datetime
 import os
 
