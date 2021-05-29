@@ -1,5 +1,7 @@
 """
 # TODO
+conté tot el codi i estructures de dades relacionats amb l'adquisició i l'enmagatzematge de grafs 
+corresponents a mapes, congestions i càlculs de rutes. Aquest mòdul no en sap res del bot.
 """
 
 import math
@@ -10,7 +12,7 @@ import re
 import os
 import urllib
 import csv
-from datetime import datetime
+from datetime import datetimeº
 import osmnx
 import staticmap
 import networkx
@@ -332,48 +334,51 @@ def bearing_itime(igraph, predecessor, node, successor):
     return bearing_cost * side_factor
 
 
-def build_igraph_with_bearings(igraph):
+def build_igraph_with_bearings(graph):
     """Returns a new graph built from the given one so that it is possible to search for a shortest 
     path taking into account the time it takes to turn. In order to do this, the original graph 
     topology is modified. 
     
-    The main idea is that, when an edge enters a node and there is more than one exiting edge, 
-    choosing has a certain bearing cost depending on the angle they form. The way in which that 
-    is accomplished is by transforming each node of the igraph in multiple inodes of different type 
-    and adding new edges between them while maintaining the original ones.
+    The main idea is that, when an edge enters a node and there is more than one exiting edge,
+    going to one or another has a certain bearing cost attributed to the physical angle they form.
+    To add this cost, each node of the graph is expanded to multiple "inodes" of different type, and 
+    new edges are added between them, while the original ones are still maintained. A graph made of
+    inodes is called an igraph, which stands for "intelligent graph".
 
-    The inode types are:
-     - In inodes: They are of the form I_node_predecessor. An inode of this type is created for 
-       every original edge comming from 'predecessor' that enters to 'node'. 
-     - Out inodes: They are of the form O_node_successor. An inode of this type is created for every
-       original edge that extis from 'node' to 'successor'.
-     - Source inodes: There is one for each original node connected with outgoing edges to all its 
-       In inodes. They are used as an origin to be able to search paths from anywhere without an 
-       arbitrary bearing decision taken. It is not possible to enter a Source inode.
-     - Destination inodes: There is one for each original node connected with ingoing edges to all 
-       its Out inodes. They are used as a destination to be able to search paths to anywhere without
-       an arbitrary bearing decision taken. It is not possible to exit a Destination inode.
+    An igraph has four types of inodes: In, Out, Source, and Destination; and three types of edges:
+    real, bearing and path-ends edges.
+
+    One In inode with ID 'I_node_predecessor' is created for every edge entering the node comming
+    from a predecessor node. Similarly, one Out inode with ID 'O_node_successor' is created for
+    every edge exiting the node to a successor node.
+
+    Furthermore, for every node of the given graph, one Source inode with ID 'S_node' and one
+    Destination inode with ID 'D_node' are created. Every path searched in the retuned igraph must
+    start from a Source inode and end in a Destination inode.
+
+    All the inodes have an attribute named 'metanode' which stores the node ID from the original
+    node they come from.
+
+    Real edges are made from the original edges of the graph, which represent the physical streets.
+    They go from Out to In inodes, and their their 'itime' and 'length' attributes remain untouched.
+    For example, an edge 3 -> 7 from the given graph, would be converted to 'O_3_7' -> 'I_7_3'.
     
-    The edge types are:
-     - Original edges: They go  from an Out inode to an In inode and are of the form 
-       O_predecessor_successor -> I_successor_predecessor. Their 'itime' and 'length' attributes 
-       remain untouched. 
-     - Bearing edges: A bearing edge is created from each In inode to every Out inode of a same 
-       original node. These are every possible choice of exiting a node once one has entered it and 
-       are of the form I_node_predecessor -> I_node_successor. Bearing edges can be thought to be 
-       "inside" of what was an old node. They form a structure that gives the cost in seconds of 
-       turning (bearing cost) between two original edges with their only attribute 'itime', which is 
-       calculated using the bearing_itime() function of this module.
-     - Path-ends edges: These are the edges that connect the Source and Destination inodes to the
-       graph and are of the form S_node -> I_node_successor or O_node_predecessor -> D_node. Their
-       only attribute 'itime' is 0 seconds.
+    Bearing edges are created from each In inode to every Out inode of a same metanode, forming
+    every possible choice of exiting a node once one has entered it. The 'itime' of the bearing
+    edges is the cost of in seconds of turning from one real edge to another, and is calculated by
+    the bearing_itime() function.
+    
+    Path-ends edges are the ones that connect with the Source and Destination inodes. For each
+    metanode, its Source inode is connected to all its Out inodes using path-ends edges, and
+    similarly, all its In inodes are connected to its Destination inode with path-ends edges too.
+    The path-ends edges have all itime 0, as they do not imply a real cost.
 
-    In conclusion, the bearing cost of two original edges is the 'itime' of the inner bearing edge 
-    that connects two iNodes created from the old node that was common in the two edges. A graph 
-    made of inodes is called an igraph, which stands for 'intelligent graph'. 
+    The Source and Destination inodes exist to avoid adding the bearing cost at the beggining and
+    the end of the path. Because of that, one can not enter a Source inode, and can not exit a
+    Destination one.
 
     The result of doing all this in a simple example can be seen in the following link:
-    # TODO
+    https://i.imgur.com/hTJ3lVJ.png
 
     Preconditions:
      - Every edge has the attribute 'length', in meters.
@@ -383,43 +388,42 @@ def build_igraph_with_bearings(igraph):
     # Create a new directed graph from scratch.
     igraph_with_bearings = networkx.DiGraph()
 
-    # Iterate for every node of the given graph. 'graph' is only used to read information, and is not modified.
-    for node, node_data in igraph.nodes(data=True):
+    # Iterate for every node of the given graph, which is only used to read information and is not modified.
+    for node, node_data in graph.nodes(data=True):
         in_nodes, out_nodes = [], []
-        # In nodes.
-        for predecessor in igraph.predecessors(node):
+        # Add In inodes.
+        for predecessor in graph.predecessors(node):
             id = "I_" + str(node) + "_" + str(predecessor)
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             in_nodes.append((id, predecessor))
 
-        # Out nodes.
-        for successor in igraph.successors(node):
+        # Add Out inodes.
+        for successor in graph.successors(node):
             id = "O_" + str(node) + "_" + str(successor)
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             out_nodes.append((id, successor))
 
-        # Bearing edges (In -> Out). Here is where the itime associated to turning is added.
+        # Add bearing edges (In -> Out), with the itime associated to turning.
         for in_node, predecessor in in_nodes:
             for out_node, successor in out_nodes:
-                igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, predecessor, node, successor))
+                igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(graph, predecessor, node, successor))
 
-        # Add the Source nodes, and connect it to every In node (Source -> In).
+        # Add the Source inode, and connect it to every Out inode (Source -> Out).
         igraph_with_bearings.add_node("S_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
-        for in_node, predecessor in in_nodes:
-            igraph_with_bearings.add_edge("S_" + str(node), in_node, itime=0)
+        for out_node, predecessor in out_nodes:
+            igraph_with_bearings.add_edge("S_" + str(node), out_node, itime=0)
 
-        # Add the path Destination node, and connect it to every Out node (Out -> Destination).
+        # Add the Destination inode, and connect it to every In inode (In -> Destination).
         igraph_with_bearings.add_node("D_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
-        for out_node, successor in out_nodes:
-            igraph_with_bearings.add_edge(out_node, "D_" + str(node), itime=0)
+        for in_node, successor in in_nodes:
+            igraph_with_bearings.add_edge(in_node, "D_" + str(node), itime=0)
 
-    # The "real" edges of the graph (Out -> In). Their 'itime' and 'length' attributes are mantained.
-    for node1, node2, edge_data in igraph.edges(data=True):
+    # Add the real edges of the graph (Out -> In). Their 'itime' and 'length' attributes are mantained.
+    for node1, node2, edge_data in graph.edges(data=True):
         igraph_with_bearings.add_edge("O_" + str(node1) + "_" + str(node2), "I_" + str(node2) + "_" + str(node1),
                                       itime=edge_data["itime"], length=edge_data["length"])
 
     return igraph_with_bearings
-
 
 def build_static_igraph(graph):
     """Returns an igraph ("intelligent graph") built from the given graph. All the edges of the
@@ -626,24 +630,19 @@ def get_congestions_plot(graph, highway_paths, congestions, size):
 def icolor(ispeed, min_ispeed, max_ispeed):
     """This is an auxiliary function for get_igraph_plot that returns a string representing a color
     in HSL (hue, saturation, lightness) format, where the hue of the color is directly proportional
-    to the given ispeed. min_ispeed and max_ispeed should be the minimum and maximum ispeed values
-    of the igraph. However, min_ispeed should not be zero, but the minimum ispeed greater than zero.
-    Those two values are used to compute the proportions to get the icolor and, in principle, they
-    should be the same for all the calls to the function of a single graph plot.
+    to the given ispeed. min_ispeed and max_ispeed are be the minimum and maximum different than
+    zero ispeed values of the igraph.
 
-    The value ispeed should be zero to represent a closed road. In that case "black" is returned.
+    The returned icolor is computed with the proportion between the specified ispeed and the range 
+    of the graph ispeeds, which should be the same for all the calls to the function in a single 
+    graph plot. However, if the ispeed is zero (closed road) "black" is returned, and if the range 
+    is zero (same ispeed in all the igraph) "yellow" is returned.
 
-    The icolor ranges from red (hue = 0 degrees), to represent the slowest streets, to light
-    electric blue (hue = 160 degrees), for the fastest streets. In between, it goes through gradient
-    shades of orange, yellow, and green. All HSL colors returned have 100% saturation, and 50%
-    lightness.
+    The icolor ranges from red (hue = 0 degrees), to represent the slowest streets, to medium spring
+    green (hue = 160 degrees), for the fastest ones. In between, it goes through gradient shades of 
+    orange, yellow, and green. All HSL colors returned have 100% saturation, and 50% lightness.
 
-    In case max_ispeed is equal to min_ispeed, "yellow" however the value of the parameter 'ispeed',
-    since a proportion can not be calculated.
-
-    Precondition: 0 < min_ispeed <= ispeed <= max_ispeed, or ispeed = 0, to represent a closed road.
-
-    More information about HSL: https://en.wikipedia.org/wiki/HSL_and_HSV.
+    Precondition: 0 < min_ispeed <= ispeed <= max_ispeed, or ispeed = 0, to represent a closed road
     """
     # If ispeed is 0, it represents a closed road, which should painted black.
     if ispeed == 0:
@@ -676,8 +675,8 @@ def get_igraph_plot(igraph, size):
      - Every inode has two attributes 'x' and 'y', which indicate their longitude and latitude,
        respectively.
     """
-    # First, iterate over all the edges to calculate min_ispeed and max_ispeed, which are needed
-    # to call the icolor function.
+    # Iterate over all the edges to calculate min_ispeed and max_ispeed, which are needed for the 
+    # icolor function.
     min_ispeed, max_ispeed = float("inf"), 0
     for inode1, inode2, edge_data in igraph.edges(data=True):
         if "length" in edge_data:
@@ -691,8 +690,7 @@ def get_igraph_plot(igraph, size):
     # Create an empty square map of the given size.
     map = staticmap.StaticMap(size, size)
 
-    # Iterate over all the edges again to paint them with the computed icolor into the map using 2px
-    # lines.
+    # Iterate over all the edges to paint them with the computed icolor into the map using 2px lines.
     for inode1, inode2, edge_data in igraph.edges(data=True):
         if "length" in edge_data:
             ispeed = edge_data["length"] / edge_data["itime"]
@@ -729,7 +727,7 @@ def get_ipath_plot(ipath, size):
     end_line = staticmap.Line(ipath[-2:], "LightBlue", 5)
     map.add_line(end_line)
 
-    # Add the icons to mark the source and destination of the path into the map.
+    # Add the source and destintation markers into the map.
     source_icon = staticmap.IconMarker(ipath[0], "./icons/source.png", 10, 32)
     destination_icon = staticmap.IconMarker(ipath[-1], "./icons/destination.png", 10, 32)
     map.add_marker(source_icon)
