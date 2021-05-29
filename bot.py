@@ -1,10 +1,11 @@
-import os
 from datetime import datetime
+import os
+
 from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
-import igo
-from translations import translate, available_languages, build_translation_dictionaries
 
+from translations import translate, available_languages, build_translation_dictionaries
+import igo
 
 def get_language(update, context):
     """Returns the user's language. If the user has not previously specified a preferred language,
@@ -31,7 +32,14 @@ def start(update, context):
                              text=translate("You can use the command /help to see everything I can do.", lang) + " 👀")
 
 
-def location_keyboards(update, context):
+def ask_location(update, context):
+    """Displays an inline keyboard which asks if they accept to share their location. If the bot
+    already has the location, it asks the user if they want to update their location, or if they
+    want to mantain the last shared location.
+
+    When a button of the keyboard is pressed, the query_handler function is called automatically to
+    handle which option has the user chosen.
+    """
     lang = get_language(update, context)
 
     new_location_button = InlineKeyboardButton(translate("Yes", lang), callback_data="1")
@@ -65,27 +73,53 @@ def get_coordinates(context, update, place_name, place):
 
 
 def go(update, context):
+    """Called when the the /go [destination] command is executed. Reads the destination argument
+    and obtains its coordinates and sets that the current function the user is executing is "go".
+    It then calls ask_location, which will continue the process that, if everything goes right, at
+    the end will send the user an image with the fastest route from their location to the specified
+    destination.
+    """
     lang = get_language(update, context)
 
-    context.user_data["function"] = "go"
     destination = update.message.text[4:].strip()
     destination_coordinates = get_coordinates(context, update, destination, PLACE)
     if destination_coordinates:
+        context.user_data["function"] = "go"
         context.user_data["destination"] = destination_coordinates
         context.bot.send_message(chat_id=update.effective_chat.id,
                                  text="Oooh! 😃 " + translate("So you want to go to ", lang) + destination + ".")
-        location_keyboards(update, context)
+        ask_location(update, context)
 
 
 def where(update, context):
+    """Called when the /where command is executed. Sets that the current function the user is
+    executing is "where". It then calls ask_location, which will continue the process that, if
+    everything goes right, at the end will send the user an image showing where they are.
+    """
     lang = get_language(update, context)
 
     context.user_data["function"] = "where"
     context.bot.send_message(chat_id=update.effective_chat.id, text=translate("I'll show you where you are.", lang) + " 🗺️")
-    location_keyboards(update, context)
+    ask_location(update, context)
 
 
 def query_handler(update, context):
+    """Called when the user presses a button from an inline keyboard, in particular then one shown
+    by the ask_location function, which is the only inline keyboard used by the bot. The function
+    handles which option has the user chosen.
+
+    If the user pressed that they want to share they real location, a button is displayed to share
+    its location. This button makes Telegram ask to the user their location. When the user shares
+    their location, it is then handled by the location_handler function.
+
+    Else if the user pressed that they want to mantain their location, get_and_plot_path or
+    plot_location is called, depending if the function that is being executed at the moment is "go"
+    or "where" (this will happen too if the user chooses to update their location, but first the
+    real location has to be obtained).
+
+    Else if the user pressed the Cancel button, nothing is done and the function being executed by
+    the user is reset to None.
+    """
     lang = context.user_data["language"]
 
     query = update.callback_query
@@ -103,6 +137,7 @@ def query_handler(update, context):
         elif context.user_data["function"] == "where":
             plot_location(update, context)
     elif action == "64":
+        context.user_data["function"] = None
         query.edit_message_text(translate("Operation cancelled.", lang) + " ❌")
     query.answer()
 
@@ -119,6 +154,14 @@ def get_dynamic_igraph(context):
     return dynamic_igraph
 
 
+def send_plot(update, context, plot):
+    """Sends an image to the user showing the given plot."""
+    filename = str(hash(plot)) + ".png"  # Use the hash of the object 'plot' to make a unique filename.
+    igo.save_map_as_image(plot, filename)
+    context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, "rb"))
+    os.remove(filename)
+
+
 def get_and_plot_path(update, context):
     lang = get_language(update, context)
 
@@ -130,11 +173,8 @@ def get_and_plot_path(update, context):
         dynamic_igraph = get_dynamic_igraph(context)
         ipath = igo.get_ipath(dynamic_igraph, source, destination)
         if ipath:
-            path_plot = igo.get_path_plot(ipath, SIZE)
-            filename = "ipath-{}-{}.png".format(source, destination)
-            igo.save_map_as_image(path_plot, filename)
-            context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, "rb"))
-            os.remove(filename)
+            path_plot = igo.get_ipath_plot(ipath, SIZE)
+            send_plot(update, context, path_plot)
         else:
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text=translate("The only way to get where you want is to pass a road that is closed!", lang)
@@ -143,14 +183,18 @@ def get_and_plot_path(update, context):
 
 def plot_location(update, context):
     location = context.user_data["location"]
-    filename = "location-{}.png".format(location)
     location_plot = igo.get_location_plot(location, SIZE)
-    igo.save_map_as_image(location_plot, filename)
-    context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, "rb"))
-    os.remove(filename)
+    send_plot(update, context, location_plot)
 
 
 def location_handler(update, context):
+    """Called when the user sends a real location to the bot, which happens when they click the
+    "Share location" button displayed from the query_handler function. Obtains the location
+    coordinates and checks if they are inside the boundaries of PLACE. If that is the case, it 
+    calls the get_and_plot_path or plot_location is called, depending if the function that is being
+    executed at the moment is "go" or "where". On the other side, if the user is not inside the
+    boundaries of PLACE, an error message is shown.
+     """
     lang = get_language(update, context)
 
     coordinates = igo.Coordinates(update.message.location.longitude, update.message.location.latitude)
@@ -180,6 +224,9 @@ def pos(update, context):
 
 
 def help(update, context):
+    """Called when the /help command is executed. Shows the commands supported by the bot, and
+    explains what they do.
+    """
     lang = get_language(update, context)
 
     context.bot.send_message(chat_id=update.effective_chat.id,
@@ -195,6 +242,7 @@ def help(update, context):
 
 
 def author(update, context):
+    """Called when the /author command is executed. Shows who created the bot."""
     lang = get_language(update, context)
 
     context.bot.send_message(chat_id=update.effective_chat.id,
@@ -205,6 +253,9 @@ def author(update, context):
 
 
 def setlang(update, context):
+    """Called when the /setlang [language code] command is executed. Updates the current bot 
+    language to the specified language code, if it valid.
+    """
     lang = get_language(update, context)
 
     new_lang = update.message.text[9:].strip()
@@ -215,13 +266,16 @@ def setlang(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=translate("Language code not recognized.", lang) + " 😕")
 
 
+# Call this code globally, because most of the variables here are used by the functions of the file,
+# and can not be passed as parameters.
 if __name__ == "__main__":
+    # Constants.
     PLACE = "Barcelona, Barcelonés, Barcelona, Catalonia"
     DEFAULT_GRAPH_FILENAME = "graph.dat"
     STATIC_IGRAPH_FILENAME = "static_igraph.dat"
     DYNAMIC_IGRAPH_FILENAME = "dynamic_igraph.dat"
     HIGHWAYS_FILENAME = "highways.dat"
-    SIZE = 1200
+    SIZE = 1000
     HIGHWAYS_URL = "https://opendata-ajuntament.barcelona.cat/data/dataset/1090983a-1c40-4609-8620-14ad49aae3ab/resource/" \
                    "1d6c814c-70ef-4147-aa16-a49ddb952f72/download/transit_relacio_trams.csv"
     CONGESTIONS_URL = "https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/" \
