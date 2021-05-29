@@ -332,48 +332,51 @@ def bearing_itime(igraph, predecessor, node, successor):
     return bearing_cost * side_factor
 
 
-def build_igraph_with_bearings(igraph):
+def build_igraph_with_bearings(graph):
     """Returns a new graph built from the given one so that it is possible to search for a shortest 
     path taking into account the time it takes to turn. In order to do this, the original graph 
     topology is modified. 
     
-    The main idea is that, when an edge enters a node and there is more than one exiting edge, 
-    choosing has a certain bearing cost depending on the angle they form. The way in which that 
-    is accomplished is by transforming each node of the igraph in multiple inodes of different type 
-    and adding new edges between them while maintaining the original ones.
+    The main idea is that, when an edge enters a node and there is more than one exiting edge,
+    going to one or another has a certain bearing cost attributed to the physical angle they form.
+    To add this cost, each node of the graph is expanded to multiple "inodes" of different type, and 
+    new edges are added between them, while the original ones are still maintained. A graph made of
+    inodes is called an igraph, which stands for "intelligent graph".
 
-    The inode types are:
-     - In inodes: They are of the form I_node_predecessor. An inode of this type is created for 
-       every original edge comming from 'predecessor' that enters to 'node'. 
-     - Out inodes: They are of the form O_node_successor. An inode of this type is created for every
-       original edge that extis from 'node' to 'successor'.
-     - Source inodes: There is one for each original node connected with outgoing edges to all its 
-       In inodes. They are used as an origin to be able to search paths from anywhere without an 
-       arbitrary bearing decision taken. It is not possible to enter a Source inode.
-     - Destination inodes: There is one for each original node connected with ingoing edges to all 
-       its Out inodes. They are used as a destination to be able to search paths to anywhere without
-       an arbitrary bearing decision taken. It is not possible to exit a Destination inode.
+    An igraph has four types of inodes: In, Out, Source, and Destination; and three types of edges:
+    real, bearing and path-ends edges.
+
+    One In inode with ID 'I_node_predecessor' is created for every edge entering the node comming
+    from a predecessor node. Similarly, one Out inode with ID 'O_node_successor' is created for
+    every edge exiting the node to a successor node.
+
+    Furthermore, for every node of the given graph, one Source inode with ID 'S_node' and one
+    Destination inode with ID 'D_node' are created. Every path searched in the retuned igraph must
+    start from a Source inode and end in a Destination inode.
+
+    All the inodes have an attribute named 'metanode' which stores the node ID from the original
+    node they come from.
+
+    Real edges are made from the original edges of the graph, which represent the physical streets.
+    They go from Out to In inodes, and their their 'itime' and 'length' attributes remain untouched.
+    For example, an edge 3 -> 7 from the given graph, would be converted to 'O_3_7' -> 'I_7_3'.
     
-    The edge types are:
-     - Original edges: They go  from an Out inode to an In inode and are of the form 
-       O_predecessor_successor -> I_successor_predecessor. Their 'itime' and 'length' attributes 
-       remain untouched. 
-     - Bearing edges: A bearing edge is created from each In inode to every Out inode of a same 
-       original node. These are every possible choice of exiting a node once one has entered it and 
-       are of the form I_node_predecessor -> I_node_successor. Bearing edges can be thought to be 
-       "inside" of what was an old node. They form a structure that gives the cost in seconds of 
-       turning (bearing cost) between two original edges with their only attribute 'itime', which is 
-       calculated using the bearing_itime() function of this module.
-     - Path-ends edges: These are the edges that connect the Source and Destination inodes to the
-       graph and are of the form S_node -> I_node_successor or O_node_predecessor -> D_node. Their
-       only attribute 'itime' is 0 seconds.
+    Bearing edges are created from each In inode to every Out inode of a same metanode, forming
+    every possible choice of exiting a node once one has entered it. The 'itime' of the bearing
+    edges is the cost of in seconds of turning from one real edge to another, and is calculated by
+    the bearing_itime() function.
+    
+    Path-ends edges are the ones that connect with the Source and Destination inodes. For each
+    metanode, its Source inode is connected to all its Out inodes using path-ends edges, and
+    similarly, all its In inodes are connected to its Destination inode with path-ends edges too.
+    The path-ends edges have all itime 0, as they do not imply a real cost.
 
-    In conclusion, the bearing cost of two original edges is the 'itime' of the inner bearing edge 
-    that connects two iNodes created from the old node that was common in the two edges. A graph 
-    made of inodes is called an igraph, which stands for 'intelligent graph'. 
+    The Source and Destination inodes exist to avoid adding the bearing cost at the beggining and
+    the end of the path. Because of that, one can not enter a Source inode, and can not exit a
+    Destination one.
 
     The result of doing all this in a simple example can be seen in the following link:
-    # TODO
+    https://i.imgur.com/hTJ3lVJ.png
 
     Preconditions:
      - Every edge has the attribute 'length', in meters.
@@ -383,38 +386,38 @@ def build_igraph_with_bearings(igraph):
     # Create a new directed graph from scratch.
     igraph_with_bearings = networkx.DiGraph()
 
-    # Iterate for every node of the given graph. 'graph' is only used to read information, and is not modified.
-    for node, node_data in igraph.nodes(data=True):
+    # Iterate for every node of the given graph, which is only used to read information and is not modified.
+    for node, node_data in graph.nodes(data=True):
         in_nodes, out_nodes = [], []
-        # In nodes.
-        for predecessor in igraph.predecessors(node):
+        # Add In inodes.
+        for predecessor in graph.predecessors(node):
             id = "I_" + str(node) + "_" + str(predecessor)
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             in_nodes.append((id, predecessor))
 
-        # Out nodes.
-        for successor in igraph.successors(node):
+        # Add Out inodes.
+        for successor in graph.successors(node):
             id = "O_" + str(node) + "_" + str(successor)
             igraph_with_bearings.add_node(id, x=node_data["x"], y=node_data["y"], metanode=node)
             out_nodes.append((id, successor))
 
-        # Bearing edges (In -> Out). Here is where the itime associated to turning is added.
+        # Add bearing edges (In -> Out), with the itime associated to turning.
         for in_node, predecessor in in_nodes:
             for out_node, successor in out_nodes:
-                igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(igraph, predecessor, node, successor))
+                igraph_with_bearings.add_edge(in_node, out_node, itime=bearing_itime(graph, predecessor, node, successor))
 
-        # Add the Source nodes, and connect it to every In node (Source -> In).
+        # Add the Source inode, and connect it to every Out inode (Source -> Out).
         igraph_with_bearings.add_node("S_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
-        for in_node, predecessor in in_nodes:
-            igraph_with_bearings.add_edge("S_" + str(node), in_node, itime=0)
+        for out_node, predecessor in out_nodes:
+            igraph_with_bearings.add_edge("S_" + str(node), out_node, itime=0)
 
-        # Add the path Destination node, and connect it to every Out node (Out -> Destination).
+        # Add the Destination inode, and connect it to every In inode (In -> Destination).
         igraph_with_bearings.add_node("D_" + str(node), x=node_data["x"], y=node_data["y"], metanode=node)
-        for out_node, successor in out_nodes:
-            igraph_with_bearings.add_edge(out_node, "D_" + str(node), itime=0)
+        for in_node, successor in in_nodes:
+            igraph_with_bearings.add_edge(in_node, "D_" + str(node), itime=0)
 
-    # The "real" edges of the graph (Out -> In). Their 'itime' and 'length' attributes are mantained.
-    for node1, node2, edge_data in igraph.edges(data=True):
+    # Add the real edges of the graph (Out -> In). Their 'itime' and 'length' attributes are mantained.
+    for node1, node2, edge_data in graph.edges(data=True):
         igraph_with_bearings.add_edge("O_" + str(node1) + "_" + str(node2), "I_" + str(node2) + "_" + str(node1),
                                       itime=edge_data["itime"], length=edge_data["length"])
 
