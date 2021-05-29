@@ -17,7 +17,7 @@ Cancelar
 Idioma actualizado.
 Código de idioma no reconocido.
 He sido desarrollado con ❤️ por Marçal Comajoan Cara y Laura Sáez Parés, dos estudiantes de la Universitat Politècnica de Catalunya (UPC), como parte de un proyecto para la asignatura de Algoritmia y Programación II del Grado en Ciencia e Ingeniería de Datos.
-/go [destino] - Te enseñaré un mapa con el camino más rápido para ir desde tu ubicación actual (marcador verde) al destino (marcador rojo) que me indiques cuando uses la comanda. Este camino se calcula teniendo en cuenta los datos actuales del tráfico en Barcelona.
+/go [destino] - Te enseñaré un mapa con el camino más rápido para ir desde tu ubicación actual (marcador verde) al destino (marcador rojo) que me indiques cuando uses la comanda. Este camino se calcula teniendo en cuenta el tiempo que se tarda en girar y los datos actuales del tráfico en Barcelona.
 /where - Te enseñaré un mapa con tu posición actual indicada con un marcador verde.
 /setlang [código de idioma] - Te hablaré en el idioma que elijas entre catalán [ca], castellano [es] e inglés [en].
 /author - Te diré quién me ha desarrollado.
