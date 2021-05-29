@@ -330,7 +330,6 @@ def bearing_itime(igraph, predecessor, node, successor):
      - 'predecessor', 'node', and 'successor' are inodes of the igraph.
      - The edges connecting the inodes have a valid 'bearing' attribute.
     """
-
     # Calculate the angle between both edges and normalize it between -180 and 180 degrees.
     bearing = igraph[node][successor]["bearing"] - igraph[predecessor][node]["bearing"]
     if bearing < -180:
@@ -838,8 +837,8 @@ def _test():
     print("Dynamic igraph loaded and plotted!")
 
     # Get the ipath between two addresses.
-    source = "Campus Nord"
-    destination = "Facultat de Nàutica"
+    source = "Casa de l'Aigua"
+    destination = "Platja de Sant Sebastià"
     ipath = get_ipath(igraph, name_to_coordinates(source, PLACE), name_to_coordinates(destination, PLACE))
 
     # Plot the ipath into a PNG image.
