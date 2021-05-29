@@ -776,8 +776,6 @@ def save_map_as_image(map, filename):
     map_image = map.render()
     map_image.save(filename)
 
-import time
-    
 
 def _test():
     """This function is used to test the module and should not be used by other modules."""
@@ -792,17 +790,14 @@ def _test():
     CONGESTIONS_URL = "https://opendata-ajuntament.barcelona.cat/data/dataset/8319c2b1-4c21-4962-9acd-6db4c5ff1148/resource/" \
                       "2d456eb5-4ea6-4f68-9794-2f3f1a58a933/download"
 
-    start_time = time.time()
-
     # Load the default graph, or build it if it does not exist and save it for later use.
     if file_exists(DEFAULT_GRAPH_FILENAME):
         graph = load_data(DEFAULT_GRAPH_FILENAME)
     else:
         graph = build_default_graph(PLACE)
         save_data(graph, DEFAULT_GRAPH_FILENAME)
-    print("Default graph loaded!")
 
-    print(round(time.time() - start_time, 2))
+    print("Default graph loaded!")
 
     # Load the highway paths, or build them if they do not exist and save them for later use.
     if file_exists(HIGHWAYS_FILENAME):
@@ -811,8 +806,6 @@ def _test():
         highways = download_highways(HIGHWAYS_URL)
         highway_paths = build_highway_paths(graph, highways)
         save_data(highway_paths, HIGHWAYS_FILENAME)
-
-    print(round(time.time() - start_time, 2))
 
     # Plot the highways into a PNG image.
     save_map_as_image(get_highways_plot(graph, highway_paths, SIZE), "highways.png")
@@ -825,9 +818,8 @@ def _test():
     else:
         igraph = build_static_igraph(graph)
         save_data(igraph, STATIC_IGRAPH_FILENAME)
-    print("Static igraph loaded!")
 
-    print(round(time.time() - start_time, 2))
+    print("Static igraph loaded!")
 
     # Download congestions (they are downloaded every time because they are updated every 5 minutes).
     congestions = download_congestions(CONGESTIONS_URL)
@@ -837,8 +829,6 @@ def _test():
 
     print("Congestion data downloaded and plotted!")
 
-    print(round(time.time() - start_time, 2))
-
     # Get the dynamic version of the igraph (taking into account the congestions of the highways).
     igraph = build_dynamic_igraph(igraph, highway_paths, congestions)
 
@@ -846,8 +836,6 @@ def _test():
     save_map_as_image(get_igraph_plot(igraph, SIZE), "igraph.png")
 
     print("Dynamic igraph loaded and plotted!")
-
-    print(round(time.time() - start_time, 2))
 
     # Get the ipath between two addresses.
     source = "Campus Nord"
@@ -858,8 +846,6 @@ def _test():
     save_map_as_image(get_ipath_plot(ipath, SIZE), "ipath.png")
 
     print("Path from", source, "to", destination, "found and plotted!")
-
-    print(round(time.time() - start_time, 2))
 
 
 # This is only executed when the file is explicitly executed (with "python3 igo.py").
