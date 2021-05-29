@@ -1,3 +1,7 @@
+"""
+
+"""
+
 from datetime import datetime
 import os
 
@@ -198,6 +202,9 @@ def pos(update, context):
     argument (which can either be the name of a place or a pair of latitude-longitude coordinates),
     and obtains its coordinates. A message is shown either confirming that the location has been
     updated, or giving an error if the argument is not valid (see get_coordinates).
+
+    Note: /pos is a "secret" command  intended for testing the bot, so it is not shown when /help is
+    executed.
     """
     lang = get_language(update, context)
 
@@ -213,8 +220,8 @@ def go(update, context):
     """Called when the the /go [destination] command is executed. Reads the destination argument,
     (which can either be the name of a place or a pair of latitude-longitude coordinates) obtains
     its coordinates, and sets that the current function the user is executing is "go". It then calls
-    ask_location, which will continue the process of sending the user an image with the fastest
-    route from their location to the specified destination.
+    ask_location, which will continue the process of sending the user an image with the fastest path
+    from their location to the specified destination.
 
     An error message is shown if the argument is not valid (see get_coordinates).
     """
