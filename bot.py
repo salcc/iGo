@@ -10,7 +10,7 @@ import igo
 def get_language(update, context):
     """Returns the user's language. If the user has not previously specified a preferred language,
     the bot will use the one given by their Telegram settings if it is available and English if it
-    isn't.
+    is not.
     """
     if "language" not in context.user_data:
         language_code = update.message.from_user.language_code
@@ -21,7 +21,10 @@ def get_language(update, context):
     return context.user_data["language"]
 
 
-def start(update, context):
+def start(update, context):´
+    """Called when the /start command is exxecuted. The bot introduces itself to the user and 
+    suggests them using /help to see its functionalities.
+    """
     lang = get_language(update, context)
 
     context.bot.send_message(chat_id=update.effective_chat.id, text=translate("Hi!", lang) + " 😄")
@@ -57,12 +60,22 @@ def ask_location(update, context):
                                  reply_markup=markup)
 
 
-def get_coordinates(context, update, place_name, place):
+def get_coordinates(context, update, place_name):
+    """Returns the coordinates of a given a string 'place_name', which can either be a geocodable 
+    string by the Nominatim API or a string representing a pair of latitude-longitude coordinates. 
+    If they include a decimal part, a dot '.' must be used as a decimal separator and they can be
+    optionally separed by a comma. 
+
+    The user receives an error message if the Nominatim API can not find the given place name, or if 
+    the obtained coordinates are not inside the boundaries of PLACE, and another one in case there
+    is no specified place_name.
+
+    """
     lang = get_language(update, context)
 
     if place_name:
         try:
-            return igo.name_to_coordinates(place_name, place)
+            return igo.name_to_coordinates(place_name, PLACE)
         except ValueError:
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text=translate("I'm sorry, there are no results for ", lang) + place_name +
@@ -82,7 +95,7 @@ def go(update, context):
     lang = get_language(update, context)
 
     destination = update.message.text[4:].strip()
-    destination_coordinates = get_coordinates(context, update, destination, PLACE)
+    destination_coordinates = get_coordinates(context, update, destination)
     if destination_coordinates:
         context.user_data["function"] = "go"
         context.user_data["destination"] = destination_coordinates
@@ -143,6 +156,12 @@ def query_handler(update, context):
 
 
 def get_dynamic_igraph(context):
+    """Returns a dynamic igraph, which is the data structure used to find the paths that the bot 
+    shows to its users. Since the dynamic igraph uses traffic data that is updated every five 
+    minutes, as long as it exists one has to check that the last update has less than five minutes 
+    or build it again each time it is needed. 
+
+    """
     if not "last_congestions_update" in context.bot_data or \
         (datetime.now() - context.bot_data["last_congestions_update"]).total_seconds() / 60 >= 5:
         congestions = igo.download_congestions(CONGESTIONS_URL)
@@ -163,6 +182,17 @@ def send_plot(update, context, plot):
 
 
 def get_and_plot_path(update, context):
+    """Sends the user a map with the path from their current location (green marker) to their 
+    specified destination (red marker) plotted in 5px Dodger Blue lines except for those that 
+    connect the source and destination coordinates to the rest, which are Light Blue. 
+
+    This path is the fastest possible considering the maximum speeds, current traffic data available 
+    and cost of turning in every street of Barcelona.
+
+    The user receives a notification message if their location already is their specified
+    destination and another one in the case there is no valid path since an essential road is 
+    closed.
+    """
     lang = get_language(update, context)
 
     source = context.user_data["location"]
@@ -182,6 +212,9 @@ def get_and_plot_path(update, context):
 
 
 def plot_location(update, context):
+    """Sends the user a map that shows their surroundings considering their current location. A 
+    green marker is added at the exact point of their coordinates.
+    """
     location = context.user_data["location"]
     location_plot = igo.get_location_plot(location, SIZE)
     send_plot(update, context, location_plot)
@@ -213,10 +246,15 @@ def location_handler(update, context):
 
 
 def pos(update, context):
+    """Called when the /pos[location] command is executed. Allows the user to set a false location
+    passed as an argument, which can either be the name of a place or a pair of latitude-longitude
+    coordinates. If the location is found and it is inside of Barcelona, the user receives a 
+    notification message indicating the location update. 
+    """
     lang = get_language(update, context)
 
     location = update.message.text[5:].strip()
-    coordinates = get_coordinates(context, update, location, PLACE)
+    coordinates = get_coordinates(context, update, location)
     if coordinates:
         context.user_data["location"] = coordinates
         context.bot.send_message(chat_id=update.effective_chat.id,
