@@ -21,7 +21,7 @@ def get_language(update, context):
     return context.user_data["language"]
 
 
-def start(update, context):´
+def start(update, context):
     """Called when the /start command is exxecuted. The bot introduces itself to the user and 
     suggests them using /help to see its functionalities.
     """
