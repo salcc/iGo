@@ -7,6 +7,10 @@ from translations import message, available_languages, build_translation_diction
 
 
 def get_language(update, context):
+    """Returns the user's language. If the user has not previously specified a preferred language,
+    the bot will use the one given by their Telegram settings if it is available and English if it
+    isn't.
+    """
     if "language" not in context.user_data:
         context.user_data["language"] = update.message.from_user.language_code
     return context.user_data["language"]
@@ -45,7 +49,7 @@ def get_coordinates(context, update, place_name, place):
 
     if place_name:
         try:
-            return igo.name_to_coordinates(place_name, place, "lat-lng")
+            return igo.name_to_coordinates(place_name, place)
         except ValueError:
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text=message("I'm sorry, there are no results for ", lang) + place_name +
@@ -123,9 +127,9 @@ def get_and_plot_path(update, context):
         dynamic_igraph = get_dynamic_igraph(context)
         ipath = igo.get_ipath(dynamic_igraph, source, destination)
         if ipath:
-            ipath_plot = igo.get_ipath_plot(ipath, SIZE)
+            path_plot = igo.get_path_plot(ipath, SIZE)
             filename = "ipath-{}-{}.png".format(source, destination)
-            igo.save_map_as_image(ipath_plot, filename)
+            igo.save_map_as_image(path_plot, filename)
             context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(filename, "rb"))
             os.remove(filename)
         else:
