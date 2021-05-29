@@ -21,12 +21,14 @@ The iGo bot is available in three different languages: Catalan, Spanish and Engl
 to add support for more! The translations of the shown messages are handled by the `translations` 
 module, which is an additional subcomponent developed in this project.
 
-### Example functionality
+### Example of use
 
 An example of how the bot can be used to search a path from the user's current location to
 "Platja de Sant Sebastià" can be seen in the following screenshot:
 
-![Screenshot](screenshot.png)
+<p align="center">
+  <img src="screenshot.png" height="1000">
+</p>
 
 ## `igo` module
 
