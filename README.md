@@ -15,7 +15,7 @@ The bot supports the following commands:
  - `/setlang [language code]`: Sets the bot's language.
  - `/author`: Shows who has developed the bot.
  - `/help`: Shows a list of the available commands and what are they used for.
- - `/pos [location]`: Changes the user location to the specified one (intended for developement).
+ - `/pos [location]`: Changes the user location to the specified one (intended for development).
 
 The iGo bot is available in three different languages: Catalan, Spanish and English, and it is easy
 to add support for more! The translations of the shown messages are handled by the `translations` 

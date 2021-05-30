@@ -13,7 +13,7 @@ The bot supports the following commands:
  - /setlang [language code]: Sets the bot's language.
  - /author: Shows who has developed the bot.
  - /help: Shows a list of the available commands and what are they used for.
- - /pos [location]: Changes the user location to the specified one (intended for developement).
+ - /pos [location]: Changes the user location to the specified one (intended for development).
 
 The iGo bot is available in different languages. The translations of the shown messages are handled
 by the translations module.
@@ -65,7 +65,7 @@ def start(update, context):
 
     context.bot.send_message(chat_id=update.effective_chat.id, text=translate("Hi!", lang) + " 😄")
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text=translate("I'm iGo and I'll help you go to wherever you want as quick as a flash.", lang)
+                             text=translate("I'm iGo, and I'll help you go to wherever you want as quick as a flash.", lang)
                                   + " ⚡")
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text=translate("You can use the command /help to see everything I can do.", lang) + " 👀")
@@ -102,7 +102,7 @@ def author(update, context):
 
 def ask_location(update, context):
     """Displays an inline keyboard which asks the user if they accept to share their location. If
-    it already has the location, the bot asks the user if they want to update it, or to mantain the
+    it already has the location, the bot asks the user if they want to update it, or to maintain the
     last shared one.
 
     When a button of the keyboard is pressed, the query_handler function is called automatically to
@@ -124,7 +124,7 @@ def ask_location(update, context):
         # If the bot does not have a location, do not show the same_location_button.
         markup = InlineKeyboardMarkup([[new_location_button], [cancel_button]])
         context.bot.send_message(chat_id=update.effective_chat.id,
-                                 text=translate("I need to know your location, do you mind sharing it with me?", lang) + " 😊",
+                                 text=translate("I need to know your location, do you want to share it with me?", lang) + " 😊",
                                  reply_markup=markup)
 
 
@@ -136,7 +136,7 @@ def query_handler(update, context):
     This button makes Telegram ask the user for their location, which then is handled by the
     location_handler function.
 
-    Else if the user pressed that they want to mantain their location, get_and_plot_path or
+    Else if the user pressed that they want to maintain their location, get_and_plot_path or
     plot_location is called directly, depending on if the function that is being executed is "go"
     or "where".
 
@@ -194,7 +194,7 @@ def get_coordinates(context, update, place_name):
     """Returns the coordinates given a string 'place_name', which can either be a geocodable string
     by the Nominatim API or a string representing a pair of latitude-longitude coordinates. If they
     include a decimal part, a dot '.' must be used as a decimal separator and they can be optionally
-    separed by a comma. 
+    separated by a comma.
 
     Two error messages can be shown: one if no place_name is specified, and another one if the
     Nominatim API can not find the given place name or the obtained coordinates are not inside the
@@ -204,7 +204,7 @@ def get_coordinates(context, update, place_name):
 
     if place_name:
         try:
-            return igo.name_to_coordinates(place_name, PLACE)
+            return igo.name_to_coordinates(place_name, PLACE, coordinates_order="lat-lng")
         except ValueError:
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text=translate("I'm sorry, there are no results for ", lang) + place_name +
@@ -273,7 +273,7 @@ def get_dynamic_igraph(context):
     The dynamic igraph is built if it has not been built already, or if it is older than five
     minutes, since it uses traffic data which is updated every five minutes.
     """
-    if not "last_congestions_update" in context.bot_data or \
+    if "last_congestions_update" not in context.bot_data or \
         (datetime.now() - context.bot_data["last_congestions_update"]).total_seconds() / 60 >= 5:
         congestions = igo.download_congestions(CONGESTIONS_URL)
         dynamic_igraph = igo.build_dynamic_igraph(igraph, highway_paths, congestions)
@@ -358,6 +358,7 @@ if __name__ == "__main__":
     else:
         graph = igo.build_default_graph(PLACE)
         igo.save_data(graph, DEFAULT_GRAPH_FILENAME)
+    print("Default graph loaded!")
 
     # Load the highway paths, or build them if they do not exist (and save them for later).
     if igo.file_exists(HIGHWAYS_FILENAME):
@@ -366,6 +367,7 @@ if __name__ == "__main__":
         highways = igo.download_highways(HIGHWAYS_URL)
         highway_paths = igo.build_highway_paths(graph, highways)
         igo.save_data(highway_paths, HIGHWAYS_FILENAME)
+    print("Highway paths loaded!")
 
     # Load the static igraph, or build it if it does not exist (and save it for later).
     if igo.file_exists(STATIC_IGRAPH_FILENAME):
@@ -373,8 +375,9 @@ if __name__ == "__main__":
     else:
         igraph = igo.build_static_igraph(graph)
         igo.save_data(igraph, STATIC_IGRAPH_FILENAME)
+    print("Static igraph loaded!")
 
-    # Read the bot acces token from the file 'token.txt'.
+    # Read the bot access token from the file 'token.txt'.
     with open("token.txt", "r") as file:
         TOKEN = file.read().strip()
 
@@ -401,7 +404,7 @@ if __name__ == "__main__":
 
     # Start the bot.
     updater.start_polling()
-    print("Bot running.")
+    print("Bot running!")
 
     # Run the bot until Ctrl+C is pressed.
     updater.idle()

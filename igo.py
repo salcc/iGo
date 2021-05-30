@@ -92,8 +92,8 @@ def name_to_coordinates(name, place, coordinates_order="lng-lat"):
 
     Usage examples, with place="Barcelona":
      - name="Facultat de Nàutica"  -> Coordinates(longitude=2.184639040777029, latitude=41.382300799999996)
-     - name="2.18511 41.38248"     -> Coordinates(longitude=2.184639040777029, latitude=41.382300799999996)
-     - name="2.18511,    41.38248" -> Coordinates(longitude=2.184639040777029, latitude=41.382300799999996)
+     - name="2.18511 41.38248"     -> Coordinates(longitude=2.18511, latitude=41.38248)
+     - name="2.18511,    41.38248" -> Coordinates(longitude=2.18511, latitude=41.38248)
      - name="2 41"                 -> ValueError: The obtained coordinates Coordinates(longitude=2.0, latitude=41.0) are not inside the boundaries of 'Barcelona'.
      - name="Calldetenes"          -> ValueError: The obtained coordinates Coordinates(longitude=2.2834318, latitude=41.9257651) are not inside the boundaries of 'Barcelona'.
      - name="41.38248 2.18511"     -> ValueError: The obtained coordinates Coordinates(longitude=41.38248, latitude=2.18511) are not inside the boundaries of 'Barcelona'.
@@ -369,12 +369,12 @@ def build_igraph_with_bearings(graph):
     An igraph has four types of inodes: In, Out, Source, and Destination; and three types of edges:
     real, bearing and path-ends edges.
 
-    One In inode with ID 'I_node_predecessor' is created for every edge entering a node comming from
+    One In inode with ID 'I_node_predecessor' is created for every edge entering a node coming from
     a predecessor node. Similarly, one Out inode with ID 'O_node_successor' is created for every
     edge exiting a node to a successor node.
 
     Furthermore, for every node of the given graph, one Source inode with ID 'S_node' and one
-    Destination inode with ID 'D_node' are created. Every path searched in the retuned igraph must
+    Destination inode with ID 'D_node' are created. Every path searched in the returned igraph must
     start from a Source inode and end in a Destination inode.
 
     All the inodes have an attribute named 'metanode' which stores the node ID from the original
@@ -394,7 +394,7 @@ def build_igraph_with_bearings(graph):
     are connected to its Destination inode. The path-ends edges have all itime 0, as they do not
     imply a real cost.
 
-    The Source and Destination inodes exist to avoid adding the bearing cost at the beggining and
+    The Source and Destination inodes exist to avoid adding the bearing cost at the beginning and
     at the end of the path. Because of that, it is not possible to enter a Source inode, nor to exit
     a Destination one.
 
@@ -443,7 +443,7 @@ def build_igraph_with_bearings(graph):
         for in_node, successor in in_nodes:
             igraph_with_bearings.add_edge(in_node, "D_" + str(node), itime=0)
 
-    # Add the real edges of the graph (Out -> In). Their 'itime' and 'length' attributes are mantained.
+    # Add the real edges of the graph (Out -> In). Their 'itime' and 'length' attributes are maintained.
     for node1, node2, edge_data in graph.edges(data=True):
         igraph_with_bearings.add_edge("O_" + str(node1) + "_" + str(node2), "I_" + str(node2) + "_" + str(node1),
                                       itime=edge_data["itime"], length=edge_data["length"])
@@ -503,7 +503,7 @@ def download_congestions(congestions_url):
 def congestion_function(congestion_state):
     """Returns the value that represents the factor that is applied to the needed time to drive 
     across a road taking into account the traffic congestions. This value is the evaluation the
-    following function on the cogestion_state: https://www.geogebra.org/calculator/sy4cy7zy. 
+    following function on the congestion_state: https://www.geogebra.org/calculator/sy4cy7zy.
     
     The congestion_state should be a real number between 1 and 5.
 
@@ -740,7 +740,7 @@ def get_ipath_plot(ipath, size):
     end_line = staticmap.Line(ipath[-2:], "LightBlue", 5)
     map.add_line(end_line)
 
-    # Add the source and destintation markers into the map.
+    # Add the source and destination markers into the map.
     source_icon = staticmap.IconMarker(ipath[0], "./icons/source.png", 10, 32)
     destination_icon = staticmap.IconMarker(ipath[-1], "./icons/destination.png", 10, 32)
     map.add_marker(source_icon)
