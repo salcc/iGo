@@ -30,6 +30,31 @@ An example of how the bot can be used to search a path from the user's current l
   <img src="screenshot.png" height="1000">
 </p>
 
+## Running the bot
+
+To run the bot, you need to have [Python](https://www.python.org/) installed on your computer,
+and the [Telegram](https://telegram.org/) app installed on your phone.
+
+Then, to create a bot, you have to obtain an *Access token*, an identifieer that Telegram provides for
+your bot. To do so, open Telegram, visit the [@BotFather](https://telegram.me/botfather), execute the
+command `/newbot` and give him all the information he asks. Finally, he will give you a code (the Access
+token), copy it and save it in a file named `token.txt`. Put this file in the main directory of the project.
+
+After that, it's time to run the bot! On your computer, open a terminal, change the directory to the
+main directory of the project and execute the following commands:
+
+    python3 -m venv venv
+    . venv/bin/activate
+    pip3 install -r requirements.txt 
+    python3 bot.py
+
+This will create a virtual Python environment, install the required packages, and execute the bot.
+The first time you run it, it will have to process the internal data used, so it will take some
+time. After loading all the data, you will see the message `Bot running!`. Now every Telegram user can
+talk to your bot!
+
+To stop the bot, enter `Ctrl+C` on the terminal in which you have the bot running.
+
 ## `igo` module
 
 iGo is a Python module that lets you create igraphs ("intelligent graphs"). What makes them intelligent is
